@@ -1,5 +1,8 @@
 #include "contiki.h"
-
+#include "jsonparse.h"
+#include "jsontree.h"
+#include "sys/etimer.h"
+#include "sys/ctimer.h"
 
 #include "dev/button-sensor.h"
 #include "dev/als-sensor.h"
@@ -15,16 +18,54 @@
 #include "./net-utils.h"
 #include "./io-utils.h"
 
+#define PUBLISH_SECONDS (CLOCK_SECOND * 10)
+
 #define SUBSCRIBE_CREATE_JOB_ALERT "job/add/alert"
 #define SUBSCRIBE_CREATE_JOB_STATUS "job/add/status"
+#define DEFAULT_STATUS_JOB_TOPIC "status/new"
+
+#define JSON_KEY_ID "id"
+#define JSON_KEY_TOPIC "topic"
+#define JSON_KEY_STATUS "status"
+#define JSON_KEY_INTERVAL "interval"
+#define JSON_KEY_TIME_FROM "timeFrom"
+#define JSON_KEY_TIME_TO "timeTo"
+#define JSON_KEY_SENSOR "sensor"
+#define JSON_KEY_SENSOR_VALUE "sensorValue"
+#define JSON_KEY_COMPARE_OPERATOR "compareOperator"
+
+#define JSON_HAS_NEXT(json) ((json).pos < (json).len)
+#define JSON_IS_ERROR(json) ((json).vtype == JSON_TYPE_ERROR)
+#define JSON_IS_KEY(json) ((json).vtype == JSON_TYPE_PAIR_NAME)
+#define JSON_IS_VALUE(json) ( \
+    (json).vtype == JSON_TYPE_STRING || \
+    (json).vtype == JSON_TYPE_PAIR || \
+    (json).vtype == JSON_TYPE_UINT || \
+    (json).vtype == JSON_TYPE_INT || \
+    (json).vtype == JSON_TYPE_NUMBER \
+)
+#define JSON_BACK_IF_NOT_VALUE(json, count) { \
+    jsonparse_next(&(json)); \
+    printf("BINV : next_json %c\n\r", (json).vtype); \
+    if(!(JSON_IS_VALUE((json)))){ \
+        if(JSON_IS_ERROR((json))){ \
+            printf("BINV error\n\r"); \
+        } \
+        printf("BINV continue\n\r"); \
+        continue; \
+    } \
+    (count)++; \
+    printf("count : %d\n\r", count); \
+}
 
 client_config_t conf;
 client_state_t state;
 
 static int is_subscribe = 0;
 static char app_buffer[MQTT_DATA_BUFFER_SIZE];
+static char receive_buffer[MQTT_DATA_BUFFER_SIZE];
 static char *buffer_ptr;
-//static mqtt_publish_status_job_t status_job_list[MAX_STATUS_JOBS];
+static mqtt_publish_status_job_t status_job_buffer;
 
 static mqtt_publish_status_job_t default_status_job = {
     .id = 0,
@@ -35,13 +76,14 @@ static mqtt_publish_status_job_t default_status_job = {
     .time_to = 72000000
 };
 
-/* parsing json to status job and add them to status-job-list */
 
 
 /* publish a status-job */
 static void 
 publish_status(mqtt_publish_status_job_t *job)
 {
+    printf("begin publish status\n\r");
+    
     int remaining = MQTT_DATA_BUFFER_SIZE;
     
     if(job == NULL){
@@ -101,19 +143,151 @@ publish_status(mqtt_publish_status_job_t *job)
 }
 
 
+static void
+job_callback(void *ptr){
+    if(ptr == NULL){
+        return;
+    }
+    
+    mqtt_publish_status_job_t* job_ptr = (mqtt_publish_status_job_t *) ptr;
+    
+    printf("callback id %d interval %d", job_ptr->id, job_ptr->interval);
+    
+    if(job_ptr->id < 0 || job_ptr->interval <= 0){
+        return;
+    } 
+    
+    printf("publish_status in callback\n\r");
+    publish_status(job_ptr);
+    
+    if(!ctimer_expired(&(job_ptr->timer))){
+        ctimer_stop(&(job_ptr->timer));
+    }
+    
+    ctimer_set(&(job_ptr->timer), (job_ptr->interval * CLOCK_SECOND), job_callback, job_ptr);
+}
+
+/* parsing json to status job and add them to status-job-list */
+static void 
+parse_status_job(char *job_as_json, uint16_t length)
+{
+    int len = strlen(job_as_json);
+    int count = 0;
+    int index = -1;
+    
+    if(len < 1 || len > MQTT_DATA_BUFFER_SIZE){
+        printf("Buffer is to small\n\r");
+        return;
+    }
+    
+    struct jsonparse_state json;
+    jsonparse_setup(&json, job_as_json, len);
+    
+    snprintf(status_job_buffer.topic, MQTT_META_BUFFER_SIZE, DEFAULT_STATUS_JOB_TOPIC);
+    status_job_buffer.id = -1;
+    status_job_buffer.status = DEVICE_STATUS_ALL;
+    status_job_buffer.interval = 30;
+    status_job_buffer.time_from = 0;
+    status_job_buffer.time_to = 0;
+    
+    
+    while(JSON_HAS_NEXT(json)){
+        jsonparse_next(&json);
+        
+        if(!(JSON_IS_KEY(json))){
+            continue;
+        }
+        
+        jsonparse_copy_value(&json, receive_buffer, MQTT_DATA_BUFFER_SIZE);
+        
+        if(strcasecmp(receive_buffer, JSON_KEY_ID) == 0){
+            printf("id\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, receive_buffer, MQTT_META_BUFFER_SIZE);
+            printf("string value %s\n\r", receive_buffer);
+            
+            status_job_buffer.id = jsonparse_get_value_as_int(&json);
+            printf("id is saved %d\n\r", status_job_buffer.id);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TOPIC) == 0){
+            printf("topic\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, status_job_buffer.topic, MQTT_META_BUFFER_SIZE);
+            printf("topic is saved %s\n\r", status_job_buffer.topic);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_STATUS) == 0){
+            printf("status\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, receive_buffer, MQTT_META_BUFFER_SIZE);
+            printf("string value %s\n\r", receive_buffer);
+            
+            status_job_buffer.status = (device_status_t)jsonparse_get_value_as_int(&json);
+            printf("status is saved\n\r");
+        }else if(strcasecmp(receive_buffer, JSON_KEY_INTERVAL) == 0){
+            printf("interval\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, receive_buffer, MQTT_META_BUFFER_SIZE);
+            printf("string value %s\n\r", receive_buffer);
+            
+            status_job_buffer.interval = jsonparse_get_value_as_int(&json);
+            printf("interval is saved %d\n\r", status_job_buffer.interval);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_FROM) == 0){
+            printf("time_from\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, receive_buffer, MQTT_META_BUFFER_SIZE);
+            printf("string value %s\n\r", receive_buffer);
+            
+            status_job_buffer.time_from = jsonparse_get_value_as_int(&json);
+            printf("time_from is saved %d\n\r", status_job_buffer.time_from);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_TO) == 0){
+            printf("time_to\n\r");
+            JSON_BACK_IF_NOT_VALUE(json, count);
+            
+            jsonparse_copy_value(&json, receive_buffer, MQTT_META_BUFFER_SIZE);
+            printf("string value %s\n\r", receive_buffer);
+            
+            status_job_buffer.time_to = jsonparse_get_value_as_int(&json);
+            printf("time_to is saved %d\n\r", status_job_buffer.time_to);
+        }
+    }
+    
+    if(count <= 0){
+        printf("count == 0\n\r");
+        return;
+    }
+    
+    index = status_job_list_save(&status_job_buffer);
+    
+    if(index < 0){
+        printf("job konnte nicht hinzugefuegt werden\n\r");
+        return;
+    }
+    
+    job_callback(&(conf.mqtt_conf.status_jobs[index]));
+}
+
+
+
 static void 
 subscribe(  const char *topic, uint16_t topic_length, 
             const uint8_t *chunk, uint16_t chunk_length)
 {
-    DBG("blabla publish handler handle topic %s (length:%u) chunk length : %u\n\r", 
+    printf("blabla publish handler handle topic %s (length:%u) chunk length : %u\n\r", 
             topic, topic_length, chunk_length);
     
-    if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_STATUS, strlen(SUBSCRIBE_CREATE_JOB_STATUS))){
-        DBG("create job status\n\r");
+    printf("topic input : %s\n\r", topic);
+    printf("topic const : %s\n\r", SUBSCRIBE_CREATE_JOB_STATUS);
+    
+    if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_STATUS, strlen(SUBSCRIBE_CREATE_JOB_STATUS)) == 0){
+        printf("create job status\n\r");
         
+        parse_status_job((char *)chunk, chunk_length);
         
-    }else if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_ALERT, strlen(SUBSCRIBE_CREATE_JOB_ALERT))){
-        DBG("create job status\n\r");
+    }else if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_ALERT, strlen(SUBSCRIBE_CREATE_JOB_ALERT)) == 0){
+        printf("create job alert\n\r");
         
         
     }
@@ -143,27 +317,29 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
 	while(1)
 	{
 		PROCESS_YIELD();
-		
+        
         ping_service_update(ev, data);
 		mqtt_service_update(ev, data);
+        
+        
         
         if(mqtt_service_is_connected())
         {
             if(ev == sensors_event && data == PUBLISH_TRIGGER)
             {
-                DBG("publish by press button\n\r");
+                printf("publish by press button\n\r");
                 publish_status(&default_status_job);
             }
             
             if(!is_subscribe)
             {
                 mqtt_service_subscribe(SUBSCRIBE_CREATE_JOB_STATUS, MQTT_QOS_LEVEL_1);
-                DBG("first subscribe\n\r");
+                printf("first subscribe\n\r");
                 
                 PROCESS_WAIT_EVENT_UNTIL(ev == mqtt_event);
                 
                 mqtt_service_subscribe(SUBSCRIBE_CREATE_JOB_ALERT, MQTT_QOS_LEVEL_1);
-                DBG("second subscribe\n\r");
+                printf("second subscribe\n\r");
                 
                 is_subscribe = 1;
             }

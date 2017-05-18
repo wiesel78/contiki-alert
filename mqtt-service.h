@@ -113,7 +113,7 @@ typedef struct mqtt_publish_status_job {
     int interval;
     int time_from;
     int time_to;
-    struct etimer timer;
+    struct ctimer timer;
 } mqtt_publish_status_job_t;
 
 
@@ -134,6 +134,7 @@ typedef struct mqtt_publish_alert_job {
     int time_from;
     int time_to;
     int value;
+    struct ctimer timer;
 } mqtt_publish_alert_job_t;
 
 typedef struct mqtt_service_state {

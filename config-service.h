@@ -22,8 +22,10 @@ extern void update_mqtt_config(void);
 extern void update_ping_config(void);
 extern void update_config(void);
 
+extern int status_job_max_id(void);
+extern int status_job_exists(mqtt_publish_status_job_t *job);
+extern int status_job_list_get_free_slot(void);
+extern int status_job_list_save(mqtt_publish_status_job_t *job);
 extern void status_job_list_init(void);
-extern int status_job_next_id(void);
-extern int status_job_next_free_slot(void);
 
 #endif /* CONFIG_SERVICE_H_ */

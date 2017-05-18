@@ -14,7 +14,7 @@ client_state_t *app_state;
 /* get the biggest status job id */
 int status_job_max_id(void)
 {
-    int max = -1;
+    int max = 0;
     
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.status_jobs[i].id > max){
@@ -29,7 +29,7 @@ int status_job_max_id(void)
 int status_job_exists(mqtt_publish_status_job_t *job)
 {
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.status_jobs[i].id == job->id){
+        if(app_conf->mqtt_conf.status_jobs[i].id == job->id && job->id != -1){
             return i;
         }
     }
@@ -54,17 +54,28 @@ int status_job_list_get_free_slot(void)
 int status_job_list_save(mqtt_publish_status_job_t *job)
 {
     int index = status_job_exists(job);
-    index = index == -1 ? status_job_list_get_free_slot() : index;
+    printf("save : index %d\n\r", index);
+    index = index <= -1 ? status_job_list_get_free_slot() : index;
+    
+    printf("save : index %d\n\r", index);
     
     if(index >= 0){
-        memcpy(
-                &(app_conf->mqtt_conf.status_jobs[index]), 
+        
+        printf("save : memcpy\n\r");
+        
+        memcpy( &(app_conf->mqtt_conf.status_jobs[index]), 
                 job, 
                 sizeof(mqtt_publish_status_job_t));
+                
+        app_conf->mqtt_conf.status_jobs[index].id = status_job_max_id() + 1;
     }
+    
+    printf("index in list_save %d\n\r", index);
     
     return index;
 }
+
+
 
 /* initialize status job array */
 void status_job_list_init(void)
