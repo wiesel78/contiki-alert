@@ -30,6 +30,7 @@
 #define MAX_ALERT_JOBS              6
 #define MAX_TCP_SEGMENT_SIZE        32
 #define MAX_SUBSCRIBE_REPEAT        10
+#define MAX_PUBLISH_REPEAT          10
 
 #define LED_ERROR                   LEDS_RED
 #define LED_CONNECTING              LEDS_GREEN
@@ -100,11 +101,32 @@ typedef enum {
     MQTT_SERVICE_STATE_ERROR,
 } mqtt_state_t;
 
+
+typedef struct subscribe_item {
+    char topic[MQTT_META_BUFFER_SIZE];
+    uint8_t topic_length;
+} subscribe_item_t;
+
+typedef struct publish_item {
+    char topic[MQTT_META_BUFFER_SIZE];
+    uint8_t topic_length;
+    char data[MQTT_DATA_BUFFER_SIZE];
+    uint16_t data_length;
+} publish_item_t;
+
 typedef struct mqtt_subscribe_job {
     char *topic;
     mqtt_qos_level_t qos_level;
     struct ctimer sub_timer;
 } mqtt_subscribe_job_t;
+
+typedef struct mqtt_publish_job {
+    char *topic;
+    uint8_t topic_len;
+    char *data;
+    uint16_t data_len;
+    struct ctimer timer;
+} mqtt_publish_job_t;
 
 typedef struct mqtt_publish_status_job {
     char topic[MQTT_META_BUFFER_SIZE];
@@ -144,6 +166,7 @@ typedef struct mqtt_service_state {
     int subscribe_tries;
     struct timer connection_life; 
     struct ctimer led_timer;
+    struct ctimer publish_timer;
     struct etimer periodic_timer;
     mqtt_subscribe_job_t subscribe_job;
     void (*publish_handler)(const char *, uint16_t, const uint8_t *, uint16_t);
@@ -174,11 +197,7 @@ extern int mqtt_service_is_connected(void);
 
 extern void mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level);
 
-extern void mqtt_service_spublish(char *topic, uint8_t topic_length, 
-                     char *payload, uint16_t payload_length);
-void inline mqtt_service_publish(char *topic, char *payload){
-    return mqtt_service_spublish(topic, strlen(topic), payload, strlen(payload));
-}
+extern void mqtt_service_publish(publish_item_t *pub_item);
 
 
 

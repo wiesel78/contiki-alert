@@ -1,4 +1,6 @@
+#include "contiki.h"
 #include "contiki-conf.h"
+#include "lib/memb.h"
 #include "sys/process.h"
 #include "rpl/rpl-private.h"
 #include "mqtt.h"
@@ -14,16 +16,24 @@
 #include "dev/cc2538-sensors.h"
 
 #include "./mqtt-service.h"
+#include "./queue.h"
 
 
+#define MAX_PUBLISH_QUEUE_ITEMS 16
+
+MEMB(publish_queue_wrap_items, data_queue_item_t, (MAX_PUBLISH_QUEUE_ITEMS));
+MEMB(publish_queue_items, publish_item_t, (MAX_PUBLISH_QUEUE_ITEMS)+1);
 
 /* Variables */
 mqtt_client_config_t *mqtt_conf;
 mqtt_service_state_t *mqtt_state;
+data_queue_t publish_queue;
 static struct mqtt_connection conn;
 static struct mqtt_message *message_pointer;
 struct process *app_process;
 process_event_t mqtt_event;
+
+
 
 void led_handler(void *d)
 {
@@ -54,25 +64,61 @@ void publish_handler(   const char *topic, uint16_t topic_length,
     }
 }
 
+void
+mqtt_service_send(){
+    printf("send \n\r");
+    
+    mqtt_status_t status;
+    publish_item_t *pub;
+    
+    
+    if(mqtt_ready(&conn) && conn.out_buffer_sent){
+    
+        printf("ready to send \n\r");
+        pub = data_queue_dequeue(&publish_queue);
+    
+        (mqtt_state->sequenz_number)++;
+        
+        status = mqtt_publish(  &conn, 
+                                NULL, 
+                                pub->topic, 
+                                (uint8_t *)(pub->data), 
+                                pub->data_length, 
+                                MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
+                        
+        if(status == MQTT_STATUS_OUT_QUEUE_FULL){
+            printf("queue publish is full\n\r");
+            
+            data_queue_enqueue(&publish_queue, pub);
+        }
+    }
+    
+    if(data_queue_peek(&publish_queue) == NULL){
+        printf("queue is empty \n\r");
+        return ;
+    }
+    
+    
+    printf("queue has elements. set timer \n\r");
+    ctimer_set( &(mqtt_state->publish_timer), 
+                NET_CONNECT_PERIODIC, 
+                mqtt_service_send, NULL);
+}
+
 void 
-mqtt_service_spublish(char *topic, uint8_t topic_length, 
-                     char *payload, uint16_t payload_length)
+mqtt_service_publish(publish_item_t *pub_item)
 {    
-    if(topic_length >= MQTT_META_BUFFER_SIZE)
+    printf("publish topic %s\n\r", pub_item->topic);
+    
+    data_queue_enqueue(&publish_queue, pub_item);
+    
+    if( &(mqtt_state->publish_timer) == NULL || 
+        ctimer_expired(&(mqtt_state->publish_timer)))
     {
-        DBG("topic to large\n\r");
+        printf("no or expired timer. Send Message\n\r");
+        mqtt_service_send();
     }
     
-    if(payload_length >= MQTT_DATA_BUFFER_SIZE)
-    {
-        DBG("payload to large\n\r");
-    }
-    
-    (mqtt_state->sequenz_number)++;
-    
-    mqtt_publish(   &conn, NULL, topic, 
-                    (uint8_t *)payload, strlen(payload), 
-                    MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
 }
 
 void 
@@ -82,6 +128,8 @@ mqtt_service_subscribe_repeat(void *data)
         DBG("break up subscribe\n\r");
         return;
     }
+    
+    (mqtt_state->subscribe_tries)++;
     
     mqtt_service_subscribe( mqtt_state->subscribe_job.topic, 
                             mqtt_state->subscribe_job.qos_level);
@@ -138,6 +186,7 @@ mqtt_event_handler(struct mqtt_connection *m, mqtt_event_t event, void *data)
                             strlen(message_pointer->topic), 
                             message_pointer->payload_chunk, 
                             message_pointer->payload_length);
+            
             break;
         }   
         case MQTT_EVENT_SUBACK:
@@ -268,6 +317,8 @@ mqtt_service_init(  struct process *p,
     mqtt_state = state;
     
     message_pointer = 0;
+    
+    data_queue_init(&publish_queue, &publish_queue_wrap_items, &publish_queue_items);
 }
 
 /* bind this into the main-loop process_thread */
