@@ -86,6 +86,81 @@ void status_job_list_init(void)
     }
 }
 
+/* get the biggest status job id */
+int alert_job_max_id(void)
+{
+    int max = 0;
+    
+    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+        if(app_conf->mqtt_conf.status_jobs[i].id > max){
+            max = app_conf->mqtt_conf.status_jobs[i].id;
+        }
+    }
+    
+    return max;
+}
+
+/* -1 if job is not exists or index of job if job exists */
+int alert_job_exists(mqtt_publish_alert_job_t *job)
+{
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
+        if(app_conf->mqtt_conf.alert_jobs[i].id == job->id && job->id != -1){
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
+/* get the first element with id == -1 (empty element and place for new one)*/
+int alert_job_list_get_free_slot(void)
+{
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++)
+    {
+        if(app_conf->mqtt_conf.alert_jobs[i].id == -1){
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
+
+/* add new element (id == -1) or save element (id >= 0) */
+int alert_job_list_save(mqtt_publish_alert_job_t *job)
+{
+    int index = alert_job_exists(job);
+    printf("save : index %d\n\r", index);
+    index = index <= -1 ? alert_job_list_get_free_slot() : index;
+    
+    printf("save : index %d\n\r", index);
+    
+    if(index >= 0){
+        
+        printf("save : memcpy\n\r");
+        
+        memcpy( &(app_conf->mqtt_conf.alert_jobs[index]), 
+                job, 
+                sizeof(mqtt_publish_alert_job_t));
+                
+        app_conf->mqtt_conf.alert_jobs[index].id = alert_job_max_id() + 1;
+    }
+    
+    printf("index in list_save %d\n\r", index);
+    
+    return index;
+}
+
+/* initialize status job array */
+void alert_job_list_init(void)
+{
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++)
+    {
+        app_conf->mqtt_conf.alert_jobs[i].id = -1;
+        app_conf->mqtt_conf.alert_jobs[i].time_elapsed = 0;
+    }
+}
+
 /* Configuration */
 int
 init_config(client_config_t *config, client_state_t *state)
@@ -104,9 +179,11 @@ init_config(client_config_t *config, client_state_t *state)
     memcpy(app_conf->mqtt_conf.cmd_type, DEFAULT_SUBSCRIBE_CMD_TYPE, 1);
     
     app_conf->mqtt_conf.broker_port = DEFAULT_BROKER_PORT;
+    app_conf->mqtt_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
     
     status_job_list_init();
+    alert_job_list_init();
     
     memset(app_state, 0, sizeof(client_state_t));
     app_state->ping_state.rssi = 0;

@@ -49,6 +49,7 @@
 #define CONNECTING_LED_DURATION     (CLOCK_SECOND >> 2)
 #define NET_CONNECT_PERIODIC        (CLOCK_SECOND >> 2)
 #define STATE_MACHINE_PERIODIC      (CLOCK_SECOND >> 1)
+#define ALERT_CHECK_INTERVAL        (CLOCK_SECOND * 5)
 
 /* temp in mC, 
  * rssi in dBm, 
@@ -66,9 +67,15 @@
 #define GET_UPTIME (clock_seconds())
 
 typedef enum {
-    lower = 0x1,
-    greater = 0x2,
-    equal = 0x4,
+    COMPARE_OPERATOR_LOWER = 0x1,
+    COMPARE_OPERATOR_GREATER = 0x2,
+    COMPARE_OPERATOR_EQUAL= 0x4,
+    COMPARE_OPERATOR_LOWER_EQUAL = 
+        COMPARE_OPERATOR_LOWER | 
+        COMPARE_OPERATOR_EQUAL,
+    COMPARE_OPERATOR_GREATE_EQUAL = 
+        COMPARE_OPERATOR_GREATER | 
+        COMPARE_OPERATOR_EQUAL,
 } compare_operator_t;
 
 typedef enum {
@@ -155,6 +162,8 @@ typedef struct mqtt_publish_alert_job {
     int id;
     int time_from;
     int time_to;
+    int duration;
+    int time_elapsed;
     int value;
     struct ctimer timer;
 } mqtt_publish_alert_job_t;
@@ -168,6 +177,7 @@ typedef struct mqtt_service_state {
     struct ctimer led_timer;
     struct ctimer publish_timer;
     struct etimer periodic_timer;
+    struct ctimer alert_timer;
     mqtt_subscribe_job_t subscribe_job;
     void (*publish_handler)(const char *, uint16_t, const uint8_t *, uint16_t);
 } mqtt_service_state_t;
@@ -182,6 +192,7 @@ typedef struct mqtt_client_config {
     char broker_ip[CONFIG_IP_ADDR_STR_LEN];
     char cmd_type[CONFIG_CMD_TYPE_LEN];
     uint16_t broker_port;
+    int alert_check_interval;
     mqtt_publish_status_job_t status_jobs[MAX_STATUS_JOBS];
     mqtt_publish_alert_job_t alert_jobs[MAX_ALERT_JOBS];
 } mqtt_client_config_t;

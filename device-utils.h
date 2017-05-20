@@ -1,6 +1,9 @@
 #ifndef DEVICE_UTILS_H_
 #define DEVICE_UTILS_H_
 
+#include "dev/button-sensor.h"
+#include "dev/als-sensor.h"
+
 #define TARGET_CC2538DK cc2538dk
 
 #if TARGET == TARGET_CC2538DK

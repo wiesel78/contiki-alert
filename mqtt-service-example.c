@@ -23,15 +23,16 @@
 #define SUBSCRIBE_CREATE_JOB_ALERT "job/add/alert"
 #define SUBSCRIBE_CREATE_JOB_STATUS "job/add/status"
 #define DEFAULT_STATUS_JOB_TOPIC "status/new"
+#define DEFAULT_ALERT_JOB_TOPIC "alert/new"
 
 #define JSON_KEY_ID "id"
 #define JSON_KEY_TOPIC "topic"
 #define JSON_KEY_STATUS "status"
 #define JSON_KEY_INTERVAL "interval"
+#define JSON_KEY_DURATION "duration"
 #define JSON_KEY_TIME_FROM "timeFrom"
 #define JSON_KEY_TIME_TO "timeTo"
-#define JSON_KEY_SENSOR "sensor"
-#define JSON_KEY_SENSOR_VALUE "sensorValue"
+#define JSON_KEY_STATUS_VALUE "statusValue"
 #define JSON_KEY_COMPARE_OPERATOR "compareOperator"
 
 #define JSON_HAS_NEXT(json) ((json).pos < (json).len)
@@ -64,7 +65,11 @@ static int is_subscribe = 0;
 static char receive_buffer[MQTT_DATA_BUFFER_SIZE];
 static char *buffer_ptr;
 static mqtt_publish_status_job_t status_job_buffer;
+static mqtt_publish_alert_job_t alert_job_buffer;
 static publish_item_t pub_item;
+static publish_item_t pub_alert_item;
+static device_status_t alert_status_buffer;
+static int alert_extend_duration;
 
 static mqtt_publish_status_job_t default_status_job = {
     .id = 0,
@@ -83,6 +88,20 @@ show_status_job(mqtt_publish_status_job_t *job)
     printf("##   topic : %s \n\r", job->topic);
     printf("##   status : %d \n\r", (int)(job->status));
     printf("##   interval : %d \n\r", job->interval);
+    printf("##   time_from : %d \n\r", job->time_from);
+    printf("##   time_to : %d \n\r", job->time_to);
+    printf("###################\n\r");
+}
+
+static void 
+show_alert_job(mqtt_publish_alert_job_t *job)
+{
+    printf("\n\r");
+    printf("## Alert-Job #%d -> %p \n\r", job->id, job);
+    printf("##   topic : %s \n\r", job->topic);
+    printf("##   status : %d \n\r", (int)(job->status));
+    printf("##   op : %d \n\r", (int)(job->op));
+    printf("##   value : %d \n\r", job->value);
     printf("##   time_from : %d \n\r", job->time_from);
     printf("##   time_to : %d \n\r", job->time_to);
     printf("###################\n\r");
@@ -156,9 +175,66 @@ publish_status(mqtt_publish_status_job_t *job)
     mqtt_service_publish(&pub_item);
 }
 
+/* publish a status-job */
+static void 
+publish_alert(mqtt_publish_alert_job_t *job)
+{
+    printf("begin publish status\n\r");
+    
+    int remaining = MQTT_DATA_BUFFER_SIZE;
+    
+    if(job == NULL){
+        return;
+    }
+    
+    pub_alert_item.topic_length = strlen(job->topic);
+    memcpy(pub_alert_item.topic, job->topic, pub_alert_item.topic_length);
+    buffer_ptr = pub_alert_item.data;
+    
+    // json begin
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "{");
+    
+    // light
+    if((job->status) & DEVICE_STATUS_LIGHT){
+        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_LIGHT, GET_VALUE_LIGHT);
+    }
+    
+    // temperature
+    if((job->status) & DEVICE_STATUS_TEMPERATURE){
+        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_TEMPERATURE, GET_VALUE_TEMPERATURE);
+    }
+    
+    // uptime
+    if((job->status) & DEVICE_STATUS_UPTIME){
+        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_UPTIME, GET_UPTIME);
+    }
+    
+    // power / battery
+    if((job->status) & DEVICE_STATUS_POWER){
+        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_POWER, GET_POWER);
+    }    
+    
+    // signal strength
+    if((job->status) & DEVICE_STATUS_RSSI){
+        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_RSSI, state.ping_state.rssi);
+    }
+    // client id
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_CLIENT_ID, conf.mqtt_conf.client_id);
+    
+    // sequence number
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_SEQUENCE_NUMBER, state.mqtt_state.sequenz_number);
+    
+    // json end
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "}");
+    
+    pub_alert_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
+    
+    mqtt_service_publish(&pub_alert_item);
+}
 
+/* call if status-job-add-request are valid and finished */
 static void
-job_callback(void *ptr){
+status_job_callback(void *ptr){
     if(ptr == NULL){
         return;
     }
@@ -177,7 +253,7 @@ job_callback(void *ptr){
         ctimer_stop(&(job_ptr->timer));
     }
     
-    ctimer_set(&(job_ptr->timer), (job_ptr->interval * CLOCK_SECOND), job_callback, job_ptr);
+    ctimer_set(&(job_ptr->timer), (job_ptr->interval * CLOCK_SECOND), status_job_callback, job_ptr);
 }
 
 /* parsing json to status job and add them to status-job-list */
@@ -252,13 +328,100 @@ parse_status_job(char *job_as_json, uint16_t length)
         return;
     }
     
-    job_callback(&(conf.mqtt_conf.status_jobs[index]));
+    status_job_callback(&(conf.mqtt_conf.status_jobs[index]));
 }
 
 
-
+/* parsing json to alert job and add them to status-job-list */
 static void 
-subscribe(  const char *topic, uint16_t topic_length, 
+parse_alert_job(char *job_as_json, uint16_t length)
+{
+    int len = strlen(job_as_json);
+    int count = 0;
+    int index = -1;
+    
+    if(len < 1 || len > MQTT_DATA_BUFFER_SIZE){
+        printf("Buffer is to small\n\r");
+        return;
+    }
+    
+    struct jsonparse_state json;
+    jsonparse_setup(&json, job_as_json, len);
+    
+    snprintf(alert_job_buffer.topic, MQTT_META_BUFFER_SIZE, DEFAULT_ALERT_JOB_TOPIC);
+    alert_job_buffer.id = -1;
+    alert_job_buffer.status = DEVICE_STATUS_LIGHT;
+    alert_job_buffer.op = COMPARE_OPERATOR_GREATE_EQUAL;
+    alert_job_buffer.value = 14000;
+    alert_job_buffer.duration = 60;
+    alert_job_buffer.time_from = 0;
+    alert_job_buffer.time_to = 0;
+    
+    
+    while(JSON_HAS_NEXT(json)){
+        jsonparse_next(&json);
+        
+        if(!(JSON_IS_KEY(json))){
+            continue;
+        }
+        
+        jsonparse_copy_value(&json, receive_buffer, MQTT_DATA_BUFFER_SIZE);
+        
+        if(strcasecmp(receive_buffer, JSON_KEY_ID) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.id = jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TOPIC) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            jsonparse_copy_value(&json, alert_job_buffer.topic, MQTT_META_BUFFER_SIZE);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_STATUS) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.status = (device_status_t)jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_COMPARE_OPERATOR) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.op = (compare_operator_t)jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_STATUS_VALUE) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.value = jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_DURATION) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.duration = jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_FROM) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count)
+            
+            alert_job_buffer.time_from = jsonparse_get_value_as_int(&json);
+        }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_TO) == 0){
+            JSON_BACK_IF_NOT_VALUE(json, count);
+            
+            alert_job_buffer.time_to = jsonparse_get_value_as_int(&json);
+        }
+    }
+    
+    if(count <= 0){
+        printf("count == 0\n\r");
+        return;
+    }
+    
+    index = alert_job_list_save(&alert_job_buffer);
+    
+    show_alert_job(&alert_job_buffer);
+    
+    if(index < 0){
+        printf("job konnte nicht hinzugefuegt werden\n\r");
+        return;
+    }
+    
+}
+
+
+/* handle incoming publish messages */
+static void 
+subscribe_handler(  const char *topic, uint16_t topic_length, 
             const uint8_t *chunk, uint16_t chunk_length)
 {
     printf("blabla publish handler handle topic %s (length:%u) chunk length : %u\n\r", 
@@ -272,7 +435,92 @@ subscribe(  const char *topic, uint16_t topic_length,
     }else if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_ALERT, strlen(SUBSCRIBE_CREATE_JOB_ALERT)) == 0){
         printf("create job alert\n\r");
         
+        parse_alert_job((char *)chunk, chunk_length);
+    }
+}
+
+static int 
+check_alert_value(int sensorvalue, mqtt_publish_alert_job_t *job){
+    switch(job->op){
+        case COMPARE_OPERATOR_GREATER:
+            return sensorvalue > job->value;
+        case COMPARE_OPERATOR_GREATE_EQUAL:
+            return sensorvalue >= job->value;
+        case COMPARE_OPERATOR_LOWER:
+            return sensorvalue < job->value;
+        case COMPARE_OPERATOR_LOWER_EQUAL:
+            return sensorvalue <= job->value;
+        case COMPARE_OPERATOR_EQUAL:
+            return sensorvalue == job->value;
+        default:
+            return -1;
+            break;
+    }
+}
+
+static void 
+check_for_alerts(){    
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
+        if(conf.mqtt_conf.alert_jobs[i].id == -1){
+            continue;
+        }
         
+        printf("alert job index %d\n\r", i);
+        
+        alert_extend_duration = 0;
+        alert_status_buffer = conf.mqtt_conf.alert_jobs[i].status;
+        
+        switch(alert_status_buffer){
+            case DEVICE_STATUS_LIGHT:
+                if(check_alert_value(GET_VALUE_LIGHT, &(conf.mqtt_conf.alert_jobs[i]))){
+                    alert_extend_duration = 1;
+                }
+                break;
+            case DEVICE_STATUS_TEMPERATURE:
+                if(check_alert_value(GET_VALUE_TEMPERATURE, &(conf.mqtt_conf.alert_jobs[i]))){
+                    alert_extend_duration = 1;
+                }
+                break;
+            case DEVICE_STATUS_POWER:
+                if(check_alert_value(GET_POWER, &(conf.mqtt_conf.alert_jobs[i]))){
+                    alert_extend_duration = 1;
+                }
+                break;
+            case DEVICE_STATUS_UPTIME:
+                if(check_alert_value(GET_UPTIME, &(conf.mqtt_conf.alert_jobs[i]))){
+                    alert_extend_duration = 1;
+                }
+                break;
+            case DEVICE_STATUS_RSSI:
+                if(check_alert_value(state.ping_state.rssi, &(conf.mqtt_conf.alert_jobs[i]))){
+                    alert_extend_duration = 1;
+                }
+                break;
+            default:
+                break;
+        }
+        
+        if(alert_extend_duration == 1){
+            printf("add time %d\n\r", conf.mqtt_conf.alert_jobs[i].time_elapsed);
+            conf.mqtt_conf.alert_jobs[i].time_elapsed += conf.mqtt_conf.alert_check_interval;
+        }else{
+            printf("nothing to add\n\r");
+            conf.mqtt_conf.alert_jobs[i].time_elapsed = 0;
+        }
+            printf("duration %d\n\r", conf.mqtt_conf.alert_jobs[i].duration);
+        
+        if(conf.mqtt_conf.alert_jobs[i].time_elapsed >= (conf.mqtt_conf.alert_jobs[i].duration * CLOCK_SECOND)){
+            printf("timeelapsed\n\r");
+            publish_alert(&(conf.mqtt_conf.alert_jobs[i]));
+            conf.mqtt_conf.alert_jobs[i].time_elapsed = 0;
+        }
+    }
+    
+    if(ctimer_expired(&(state.mqtt_state.alert_timer))){
+        ctimer_set(
+            &state.mqtt_state.alert_timer, 
+            conf.mqtt_conf.alert_check_interval,
+            check_for_alerts, NULL);
     }
 }
 
@@ -290,7 +538,7 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
     
     update_config();
     
-    (state.mqtt_state.publish_handler) = &subscribe;
+    (state.mqtt_state.publish_handler) = &subscribe_handler;
     
     ping_service_init(&(conf.ping_conf), &(state.ping_state));
     mqtt_service_init(&mqtt_service_test, &(conf.mqtt_conf), &(state.mqtt_state));
@@ -303,8 +551,6 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
         
         ping_service_update(ev, data);
 		mqtt_service_update(ev, data);
-        
-        
         
         if(mqtt_service_is_connected())
         {
@@ -325,6 +571,11 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
                 printf("second subscribe\n\r");
                 
                 is_subscribe = 1;
+                
+                ctimer_set(
+                    &(state.mqtt_state.alert_timer), 
+                    conf.mqtt_conf.alert_check_interval, 
+                    check_for_alerts, NULL);
             }
         }
         else

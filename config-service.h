@@ -28,4 +28,10 @@ extern int status_job_list_get_free_slot(void);
 extern int status_job_list_save(mqtt_publish_status_job_t *job);
 extern void status_job_list_init(void);
 
+extern int alert_job_max_id(void);
+extern int alert_job_exists(mqtt_publish_alert_job_t *job);
+extern int alert_job_list_get_free_slot(void);
+extern int alert_job_list_save(mqtt_publish_alert_job_t *job);
+extern void alert_job_list_init(void);
+
 #endif /* CONFIG_SERVICE_H_ */
