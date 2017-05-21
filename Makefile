@@ -2,6 +2,9 @@ DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
 
 all: mqtt-service-example
 
+emul8: all
+	emul8 mqtt-service-example.emul8
+
 PROJECT_SOURCEFILES += mqtt-service.c ping-service.c config-service.c net-utils.c io-utils.c queue.c
 
 CONTIKI_WITH_IPV6 = 1
