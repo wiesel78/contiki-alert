@@ -51,8 +51,8 @@
 #define STATE_MACHINE_PERIODIC      (CLOCK_SECOND >> 1)
 #define ALERT_CHECK_INTERVAL        (CLOCK_SECOND * 5)
 
-/* temp in mC, 
- * rssi in dBm, 
+/* temp in mC,
+ * rssi in dBm,
  * uptime in seconds,
  * power in mV */
 #define JSON_STATUS_LIGHT           "\"light\":\"%d\","
@@ -63,6 +63,8 @@
 #define JSON_STATUS_RSSI            "\"signal\":\"%d\","
 #define JSON_STATUS_CLIENT_ID       "\"id\":\"%s\","
 #define JSON_STATUS_SEQUENCE_NUMBER "\"sequence\":\"%d\""
+#define JSON_STATUS_IS_ONLINE       "\"isOnline\":\"%d\""
+#define JSON_STATUS_JOB_ID          "\"jobId\":\"%d\""
 
 #define GET_UPTIME (clock_seconds())
 
@@ -70,11 +72,11 @@ typedef enum {
     COMPARE_OPERATOR_LOWER = 0x1,
     COMPARE_OPERATOR_GREATER = 0x2,
     COMPARE_OPERATOR_EQUAL= 0x4,
-    COMPARE_OPERATOR_LOWER_EQUAL = 
-        COMPARE_OPERATOR_LOWER | 
+    COMPARE_OPERATOR_LOWER_EQUAL =
+        COMPARE_OPERATOR_LOWER |
         COMPARE_OPERATOR_EQUAL,
-    COMPARE_OPERATOR_GREATE_EQUAL = 
-        COMPARE_OPERATOR_GREATER | 
+    COMPARE_OPERATOR_GREATE_EQUAL =
+        COMPARE_OPERATOR_GREATER |
         COMPARE_OPERATOR_EQUAL,
 } compare_operator_t;
 
@@ -86,7 +88,7 @@ typedef enum {
     DEVICE_STATUS_IPV6 = 1 << 4,
     DEVICE_STATUS_RSSI = 1 << 5,
     DEVICE_STATUS_CLIENT_ID = 1 << 6,
-    DEVICE_STATUS_ALL = 
+    DEVICE_STATUS_ALL =
         DEVICE_STATUS_LIGHT |
         DEVICE_STATUS_TEMPERATURE |
         DEVICE_STATUS_UPTIME |
@@ -108,6 +110,11 @@ typedef enum {
     MQTT_SERVICE_STATE_ERROR,
 } mqtt_state_t;
 
+typedef enum {
+    JOB_TYPE_STATUS = 1 << 0,
+    JOB_TYPE_ALERT = 1 << 1,
+} job_type_t;
+
 
 typedef struct subscribe_item {
     char topic[MQTT_META_BUFFER_SIZE];
@@ -115,6 +122,9 @@ typedef struct subscribe_item {
 } subscribe_item_t;
 
 typedef struct publish_item {
+    mqtt_qos_level_t qos_level;
+    mqtt_retain_t retain;
+    uint8_t is_last_will;
     char topic[MQTT_META_BUFFER_SIZE];
     uint8_t topic_length;
     char data[MQTT_DATA_BUFFER_SIZE];
@@ -147,10 +157,10 @@ typedef struct mqtt_publish_status_job {
 
 
 /*
- * example light : 
- *      from, 
- *      to, 
- *      if 
+ * example light :
+ *      from,
+ *      to,
+ *      if
  *          (light/temperature/power/rssi):device_status_t
  *          (lower/greater)[equal]:
  *          value
@@ -173,7 +183,7 @@ typedef struct mqtt_service_state {
     int sequenz_number;
     int connect_attempt;
     int subscribe_tries;
-    struct timer connection_life; 
+    struct timer connection_life;
     struct ctimer led_timer;
     struct ctimer publish_timer;
     struct etimer periodic_timer;
@@ -200,8 +210,8 @@ typedef struct mqtt_client_config {
 extern process_event_t mqtt_event;
 
 /* Methods */
-extern void mqtt_service_init(  struct process *p, 
-                                mqtt_client_config_t *config, 
+extern void mqtt_service_init(  struct process *p,
+                                mqtt_client_config_t *config,
                                 mqtt_service_state_t *state);
 extern void mqtt_service_update(process_event_t ev, process_data_t data);
 extern int mqtt_service_is_connected(void);
@@ -209,6 +219,7 @@ extern int mqtt_service_is_connected(void);
 extern void mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level);
 
 extern void mqtt_service_publish(publish_item_t *pub_item);
+
 
 
 

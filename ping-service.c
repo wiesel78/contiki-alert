@@ -36,13 +36,13 @@ ping(void)
 
 /* then receive a ping_response */
 void
-ping_handler( uip_ipaddr_t *source, uint8_t ttl, 
+ping_handler( uip_ipaddr_t *source, uint8_t ttl,
                     uint8_t *data, uint16_t datalen)
 {
     if(uip_ip6addr_cmp(source, uip_ds6_defrt_choose())) {
         ping_state->rssi = sicslowpan_get_last_rssi();
     }
-    
+
     printf("icmp response was receive with signal strenght : %d\n\r", ping_state->rssi);
 }
 
@@ -50,14 +50,14 @@ ping_handler( uip_ipaddr_t *source, uint8_t ttl,
 
 /* Initialize the ping-service */
 void
-ping_service_init(  ping_client_config_t *config, 
+ping_service_init(  ping_client_config_t *config,
                     ping_service_state_t *state)
 {
     ping_conf = config;
     ping_state = state;
-    
+
     uip_icmp6_echo_reply_callback_add(&ping_notification, ping_handler);
-                                    
+
     etimer_set(&echo_request_timer, ping_conf->interval);
 }
 

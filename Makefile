@@ -1,9 +1,9 @@
 DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
 
-all: mqtt-service-example
+all: contiki-alert
 
 emul8: all
-	emul8 mqtt-service-example.emul8
+	emul8 contiki-alert.emul8
 
 PROJECT_SOURCEFILES += mqtt-service.c ping-service.c config-service.c net-utils.c io-utils.c queue.c
 

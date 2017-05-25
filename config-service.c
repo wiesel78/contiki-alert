@@ -15,13 +15,13 @@ client_state_t *app_state;
 int status_job_max_id(void)
 {
     int max = 0;
-    
+
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.status_jobs[i].id > max){
             max = app_conf->mqtt_conf.status_jobs[i].id;
         }
     }
-    
+
     return max;
 }
 
@@ -33,7 +33,7 @@ int status_job_exists(mqtt_publish_status_job_t *job)
             return i;
         }
     }
-    
+
     return -1;
 }
 
@@ -46,7 +46,7 @@ int status_job_list_get_free_slot(void)
             return i;
         }
     }
-    
+
     return -1;
 }
 
@@ -56,23 +56,48 @@ int status_job_list_save(mqtt_publish_status_job_t *job)
     int index = status_job_exists(job);
     printf("save : index %d\n\r", index);
     index = index <= -1 ? status_job_list_get_free_slot() : index;
-    
+
     printf("save : index %d\n\r", index);
-    
+
     if(index >= 0){
-        
+
         printf("save : memcpy\n\r");
-        
-        memcpy( &(app_conf->mqtt_conf.status_jobs[index]), 
-                job, 
+
+        memcpy( &(app_conf->mqtt_conf.status_jobs[index]),
+                job,
                 sizeof(mqtt_publish_status_job_t));
-                
+
         app_conf->mqtt_conf.status_jobs[index].id = status_job_max_id() + 1;
     }
-    
+
     printf("index in list_save %d\n\r", index);
-    
+
     return index;
+}
+
+/* delete job by id */
+void status_job_delete(int id)
+{
+    mqtt_publish_status_job_t *job = NULL;
+
+    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+        if(app_conf->mqtt_conf.status_jobs[i].id == id && job->id != -1){
+            job = &(app_conf->mqtt_conf.status_jobs[i]);
+
+            if(!ctimer_expired(&(job->timer))){
+                ctimer_stop(&(job->timer));
+            }
+
+            memset(job->topic, 0, MQTT_META_BUFFER_SIZE);
+            job->id = -1;
+            job->interval = 30000;
+            job->status = DEVICE_STATUS_ALL;
+            job->time_from = 0;
+            job->time_to = 0;
+
+            printf("job deleted by id %d\n\r", id);
+        }
+    }
 }
 
 
@@ -90,13 +115,13 @@ void status_job_list_init(void)
 int alert_job_max_id(void)
 {
     int max = 0;
-    
+
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.status_jobs[i].id > max){
             max = app_conf->mqtt_conf.status_jobs[i].id;
         }
     }
-    
+
     return max;
 }
 
@@ -108,7 +133,7 @@ int alert_job_exists(mqtt_publish_alert_job_t *job)
             return i;
         }
     }
-    
+
     return -1;
 }
 
@@ -121,7 +146,7 @@ int alert_job_list_get_free_slot(void)
             return i;
         }
     }
-    
+
     return -1;
 }
 
@@ -132,23 +157,53 @@ int alert_job_list_save(mqtt_publish_alert_job_t *job)
     int index = alert_job_exists(job);
     printf("save : index %d\n\r", index);
     index = index <= -1 ? alert_job_list_get_free_slot() : index;
-    
+
     printf("save : index %d\n\r", index);
-    
+
     if(index >= 0){
-        
+
         printf("save : memcpy\n\r");
-        
-        memcpy( &(app_conf->mqtt_conf.alert_jobs[index]), 
-                job, 
+
+        memcpy( &(app_conf->mqtt_conf.alert_jobs[index]),
+                job,
                 sizeof(mqtt_publish_alert_job_t));
-                
+
         app_conf->mqtt_conf.alert_jobs[index].id = alert_job_max_id() + 1;
     }
-    
+
     printf("index in list_save %d\n\r", index);
-    
+
     return index;
+}
+
+
+
+/* delete job by id */
+void alert_job_delete(int id)
+{
+    mqtt_publish_alert_job_t *job = NULL;
+
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
+        if(app_conf->mqtt_conf.alert_jobs[i].id == id && job->id != -1){
+            job = &(app_conf->mqtt_conf.alert_jobs[i]);
+
+            if(!ctimer_expired(&(job->timer))){
+                ctimer_stop(&(job->timer));
+            }
+
+            memset(job->topic, 0, MQTT_META_BUFFER_SIZE);
+            job->id = -1;
+            job->status = DEVICE_STATUS_LIGHT;
+            job->time_from = 0;
+            job->time_to = 0;
+            job->op = COMPARE_OPERATOR_GREATE_EQUAL;
+            job->duration = 30;
+            job->time_elapsed = 0;
+            job->value = 0;
+
+            printf("job deleted by id %d\n\r", id);
+        }
+    }
 }
 
 /* initialize status job array */
@@ -167,7 +222,7 @@ init_config(client_config_t *config, client_state_t *state)
 {
     app_conf = config;
     app_state = state;
-    
+
     /* Populate configuration with default values */
     memset(app_conf, 0, sizeof(client_config_t));
 
@@ -177,14 +232,14 @@ init_config(client_config_t *config, client_state_t *state)
     memcpy(app_conf->mqtt_conf.event_type_id, DEFAULT_EVENT_TYPE_ID, strlen(DEFAULT_EVENT_TYPE_ID));
     memcpy(app_conf->mqtt_conf.broker_ip, MQTT_BROKER_IP_ADDR, strlen(MQTT_BROKER_IP_ADDR));
     memcpy(app_conf->mqtt_conf.cmd_type, DEFAULT_SUBSCRIBE_CMD_TYPE, 1);
-    
+
     app_conf->mqtt_conf.broker_port = DEFAULT_BROKER_PORT;
     app_conf->mqtt_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
-    
+
     status_job_list_init();
     alert_job_list_init();
-    
+
     memset(app_state, 0, sizeof(client_state_t));
     app_state->ping_state.rssi = 0;
     app_state->mqtt_state.publish_handler = NULL;
@@ -197,8 +252,8 @@ init_config(client_config_t *config, client_state_t *state)
 int
 construct_client_id(void)
 {
-  int len = snprintf(app_conf->mqtt_conf.client_id, MQTT_DATA_BUFFER_SIZE, 
-                     "d:%s:%02x%02x%02x%02x%02x%02x",
+  int len = snprintf(app_conf->mqtt_conf.client_id, MQTT_DATA_BUFFER_SIZE,
+                     "%s%02x%02x%02x%02x%02x%02x",
                      app_conf->mqtt_conf.type_id,
                      linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
                      linkaddr_node_addr.u8[2], linkaddr_node_addr.u8[5],
@@ -222,27 +277,27 @@ update_mqtt_config(void)
         app_state->mqtt_state.state = MQTT_SERVICE_STATE_CONFIG_ERROR;
         return;
     }
-    
+
     app_state->mqtt_state.sequenz_number = 0;
     app_state->mqtt_state.state = MQTT_SERVICE_STATE_INIT;
-    
+
     etimer_set(&(app_state->mqtt_state.periodic_timer),0);
-        
+
     return;
 }
 
 /* reset the ping config */
 void
 update_ping_config(void)
-{    
+{
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
     app_state->ping_state.rssi = 0x8000000;
-        
+
     return;
 }
 
 /* reset all configs */
-void 
+void
 update_config(void)
 {
     update_mqtt_config();
