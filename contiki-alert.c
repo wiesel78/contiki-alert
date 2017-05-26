@@ -21,44 +21,8 @@
 
 #define PUBLISH_SECONDS (CLOCK_SECOND * 10)
 
-#define SUBSCRIBE_CREATE_JOB_ALERT TOPIC_ADD_JOB_ALERT
-#define SUBSCRIBE_CREATE_JOB_STATUS TOPIC_ADD_JOB_STATUS
 #define DEFAULT_STATUS_JOB_TOPIC "status/new"
 #define DEFAULT_ALERT_JOB_TOPIC "alert/new"
-
-#define JSON_KEY_ID "id"
-#define JSON_KEY_TOPIC "topic"
-#define JSON_KEY_STATUS "status"
-#define JSON_KEY_INTERVAL "interval"
-#define JSON_KEY_DURATION "duration"
-#define JSON_KEY_TIME_FROM "timeFrom"
-#define JSON_KEY_TIME_TO "timeTo"
-#define JSON_KEY_STATUS_VALUE "statusValue"
-#define JSON_KEY_COMPARE_OPERATOR "compareOperator"
-#define JSON_KEY_IS_ONLINE "isOnline"
-#define JSON_KEY_JOB_ID "jobId"
-
-#define JSON_HAS_NEXT(json) ((json).pos < (json).len)
-#define JSON_IS_ERROR(json) ((json).vtype == JSON_TYPE_ERROR)
-#define JSON_IS_KEY(json) ((json).vtype == JSON_TYPE_PAIR_NAME)
-#define JSON_IS_VALUE(json) ( \
-    (json).vtype == JSON_TYPE_STRING || \
-    (json).vtype == JSON_TYPE_PAIR || \
-    (json).vtype == JSON_TYPE_UINT || \
-    (json).vtype == JSON_TYPE_INT || \
-    (json).vtype == JSON_TYPE_NUMBER \
-)
-#define JSON_BACK_IF_NOT_VALUE(json, count) { \
-    jsonparse_next(&(json)); \
-    if(!(JSON_IS_VALUE((json)))){ \
-        if(JSON_IS_ERROR((json))){ \
-            printf("BINV error\n\r"); \
-        } \
-        printf("BINV continue\n\r"); \
-        continue; \
-    } \
-    (count)++; \
-}
 
 
 client_config_t conf;
@@ -531,20 +495,20 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
     printf("blabla publish handler handle topic %s (length:%u) chunk length : %u\n\r",
             topic, topic_length, chunk_length);
 
-    if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_STATUS, strlen(SUBSCRIBE_CREATE_JOB_STATUS)) == 0){
+    if(strncasecmp(topic, TOPIC_ADD_JOB_STATUS, strlen(TOPIC_ADD_JOB_STATUS)) == 0){
         printf("create job status\n\r");
 
-        if( strlen(topic) == strlen(SUBSCRIBE_CREATE_JOB_STATUS)
+        if( strlen(topic) == strlen(TOPIC_ADD_JOB_STATUS)
             || strstr(topic, conf.mqtt_conf.client_id) != NULL)
         {
             printf("create job status 2\n\r");
             parse_status_job((char *)chunk, chunk_length);
         }
 
-    }else if(strncasecmp(topic, SUBSCRIBE_CREATE_JOB_ALERT, strlen(SUBSCRIBE_CREATE_JOB_ALERT)) == 0){
+    }else if(strncasecmp(topic, TOPIC_ADD_JOB_ALERT, strlen(TOPIC_ADD_JOB_ALERT)) == 0){
         printf("create job alert 1\n\r");
 
-        if( strlen(topic) == strlen(SUBSCRIBE_CREATE_JOB_ALERT)
+        if( strlen(topic) == strlen(TOPIC_ADD_JOB_ALERT)
             || strstr(topic, conf.mqtt_conf.client_id) != NULL)
         {
             printf("create job alert 2\n\r");
@@ -691,6 +655,7 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
             {
                 printf("publish by press button\n\r");
                 publish_status(&default_status_job);
+                // read_config();
             }
 
             if(!is_subscribe)

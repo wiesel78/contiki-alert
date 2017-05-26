@@ -5,6 +5,11 @@
 
 #define PING_PAYLOAD_LEN   20
 
+#define JSON_CONFIG_KEY_INTERVAL "interval"
+#define JSON_CONFIG_KEY_PING "pingConf"
+
+#define JSON_CONFIG_PING_INTERVAL "\"" JSON_CONFIG_KEY_INTERVAL "\":%d"
+
 
 /* PING client config */
 typedef struct ping_client_config {
@@ -18,7 +23,7 @@ typedef struct ping_service_state {
 #define DEFAULT_PING_INTERVAL       (CLOCK_SECOND * 30)
 
 
-extern void ping_service_init(  ping_client_config_t *config, 
+extern void ping_service_init(  ping_client_config_t *config,
                                 ping_service_state_t *state);
 void ping_service_update(process_event_t ev, process_data_t data);
 extern void ping(void);

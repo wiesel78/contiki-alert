@@ -7,6 +7,14 @@
 #include "./mqtt-service.h"
 
 
+#define CONFIG_FILE_PATH "blabla"
+
+#define WRITE_AND_RESET(fd, buf, buf_ptr, remain) { \
+    cfs_write((fd), (buf), MQTT_DATA_BUFFER_SIZE - (remain)); \
+    (buf_ptr) = (buf); \
+    (remain) = MQTT_DATA_BUFFER_SIZE; \
+}
+
 typedef struct client_config {
     mqtt_client_config_t mqtt_conf;
     ping_client_config_t ping_conf;
@@ -35,5 +43,8 @@ extern int alert_job_exists(mqtt_publish_alert_job_t *job);
 extern int alert_job_list_get_free_slot(void);
 extern int alert_job_list_save(mqtt_publish_alert_job_t *job);
 extern void alert_job_list_init(void);
+
+extern void save_config();
+extern void read_config();
 
 #endif /* CONFIG_SERVICE_H_ */
