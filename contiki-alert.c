@@ -1,4 +1,5 @@
 #include "contiki.h"
+#include "cfs/cfs.h"
 #include "jsonparse.h"
 #include "jsontree.h"
 #include "sys/etimer.h"
@@ -641,7 +642,6 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
     mqtt_service_init(&mqtt_service_test, &(conf.mqtt_conf), &(state.mqtt_state));
 
 
-
 	while(1)
 	{
 		PROCESS_YIELD();
@@ -651,11 +651,12 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
 
         if(mqtt_service_is_connected())
         {
+
             if(ev == sensors_event && data == PUBLISH_TRIGGER)
             {
                 printf("publish by press button\n\r");
                 publish_status(&default_status_job);
-                // read_config();
+                read_config();
             }
 
             if(!is_subscribe)

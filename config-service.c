@@ -12,9 +12,13 @@
 client_config_t *app_conf;
 client_state_t *app_state;
 
-// static char config_buffer[MQTT_DATA_BUFFER_SIZE];
+// static char config_buffer[CONFIG_BUFFER_SIZE];
 // static char config_receive_buffer[MQTT_DATA_BUFFER_SIZE];
 // static char *config_buffer_ptr;
+static ini_state_t config_state;
+static mqtt_publish_alert_job_t alert_job_buffer;
+static mqtt_publish_status_job_t status_job_buffer;
+static uint8_t can_save = 1;
 
 /* get the biggest status job id */
 int status_job_max_id(void)
@@ -59,25 +63,20 @@ int status_job_list_get_free_slot(void)
 int status_job_list_save(mqtt_publish_status_job_t *job)
 {
     int index = status_job_exists(job);
-    printf("save : index %d\n\r", index);
     index = index <= -1 ? status_job_list_get_free_slot() : index;
 
-    printf("save : index %d\n\r", index);
-
     if(index >= 0){
-
-        printf("save : memcpy\n\r");
-
         memcpy( &(app_conf->mqtt_conf.status_jobs[index]),
                 job,
                 sizeof(mqtt_publish_status_job_t));
 
-        app_conf->mqtt_conf.status_jobs[index].id = status_job_max_id() + 1;
+        if(app_conf->mqtt_conf.status_jobs[index].id < 0)
+            app_conf->mqtt_conf.status_jobs[index].id = status_job_max_id() + 1;
     }
 
     printf("index in list_save %d\n\r", index);
 
-    // save_config();
+    save_config();
 
     return index;
 }
@@ -106,7 +105,7 @@ void status_job_delete(int id)
         }
     }
 
-    // save_config();
+    save_config();
 }
 
 
@@ -126,8 +125,8 @@ int alert_job_max_id(void)
     int max = 0;
 
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.status_jobs[i].id > max){
-            max = app_conf->mqtt_conf.status_jobs[i].id;
+        if(app_conf->mqtt_conf.alert_jobs[i].id > max){
+            max = app_conf->mqtt_conf.alert_jobs[i].id;
         }
     }
 
@@ -164,25 +163,22 @@ int alert_job_list_get_free_slot(void)
 int alert_job_list_save(mqtt_publish_alert_job_t *job)
 {
     int index = alert_job_exists(job);
-    printf("save : index %d\n\r", index);
     index = index <= -1 ? alert_job_list_get_free_slot() : index;
 
-    printf("save : index %d\n\r", index);
-
     if(index >= 0){
-
-        printf("save : memcpy\n\r");
-
         memcpy( &(app_conf->mqtt_conf.alert_jobs[index]),
                 job,
                 sizeof(mqtt_publish_alert_job_t));
 
-        app_conf->mqtt_conf.alert_jobs[index].id = alert_job_max_id() + 1;
+        if(app_conf->mqtt_conf.alert_jobs[index].id < 0)
+            app_conf->mqtt_conf.alert_jobs[index].id = alert_job_max_id() + 1;
+
+        app_conf->mqtt_conf.alert_jobs[index].time_elapsed = 0;
     }
 
     printf("index in list_save %d\n\r", index);
 
-    // save_config();
+    save_config();
 
     return index;
 }
@@ -216,7 +212,7 @@ void alert_job_delete(int id)
         }
     }
 
-    // save_config();
+    save_config();
 }
 
 /* initialize status job array */
@@ -250,10 +246,7 @@ init_config(client_config_t *config, client_state_t *state)
     app_conf->mqtt_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
 
-    status_job_list_init();
-    alert_job_list_init();
-
-    // read_config();
+    read_config();
 
     memset(app_state, 0, sizeof(client_state_t));
     app_state->ping_state.rssi = 0;
@@ -319,202 +312,176 @@ update_config(void)
     update_ping_config();
 }
 
-// void
-// save_config(){
-//
-//     printf("save config\n\r");
-//     int fd;
-//     int remaining = MQTT_DATA_BUFFER_SIZE;
-//     mqtt_publish_status_job_t *status_job = NULL;
-//     mqtt_publish_alert_job_t *alert_job = NULL;
-//
-//     fd = cfs_open(CONFIG_FILE_PATH, CFS_READ | CFS_WRITE);
-//     printf("fd = %d\n\r", fd);
-//     if(fd < 0)
-//         return;
-//
-//     printf("save config file is open\n\r");
-//     config_buffer_ptr = config_buffer;
-//     // Config
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, "{");
-//
-//     // Ping Config
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,   "\"%s\":{", JSON_CONFIG_KEY_PING);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_PING_INTERVAL, app_conf->ping_conf.interval);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,   "},");
-//
-//     // MQTT Config
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,   "\"%s\":{", JSON_CONFIG_KEY_MQTT);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_USERNAME, app_conf->mqtt_conf.username);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_PASSWORD, app_conf->mqtt_conf.password);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_CLIENT_ID, app_conf->mqtt_conf.client_id);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_TYPE_ID, app_conf->mqtt_conf.type_id);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_EVENT_TYPE_ID, app_conf->mqtt_conf.event_type_id);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_BROKER_IP, app_conf->mqtt_conf.broker_ip);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_BROKER_PORT, app_conf->mqtt_conf.broker_port);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_CMD_TYPE, app_conf->mqtt_conf.cmd_type);
-//     config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining,     JSON_CONFIG_ALERT_CHECK_INTERVAL, app_conf->mqtt_conf.alert_check_interval);
-//
-//     WRITE_AND_RESET(fd, config_buffer, config_buffer_ptr, remaining);
-//
-//     // Status Jobs
-//     bcprintf(config_buffer_ptr, &remaining,     "\"%s\":[", JSON_CONFIG_JOB_KEY_STATUS_JOBS);
-//
-//     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
-//         if(app_conf->mqtt_conf.status_jobs[i].id != -1){
-//             if(status_job != NULL){
-//                 config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, ",");
-//             }
-//
-//             status_job = &(app_conf->mqtt_conf.status_jobs[i]);
-//
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, "{");
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TOPIC, status_job->topic);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_STATUS, status_job->status);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_ID, status_job->id);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_INTERVAL, status_job->interval);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TIME_FROM, status_job->time_from);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TIME_TO, status_job->time_to);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, "}");
-//
-//             WRITE_AND_RESET(fd, config_buffer, config_buffer_ptr, remaining);
-//         }
-//     }
-//
-//     bcprintf(config_buffer_ptr, &remaining,     "],");
-//
-//     // Alert jobs
-//     bcprintf(config_buffer_ptr, &remaining,     "\"%s\":[", JSON_CONFIG_JOB_KEY_ALERT_JOBS);
-//
-//     for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
-//         if(app_conf->mqtt_conf.alert_jobs[i].id != -1){
-//             if(alert_job != NULL){
-//                 config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, ",");
-//             }
-//
-//             alert_job = &(app_conf->mqtt_conf.alert_jobs[i]);
-//
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, "{");
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TOPIC, alert_job->topic);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_STATUS, alert_job->status);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_OPERATOR, alert_job->op);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_ID, alert_job->id);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_DURATION, alert_job->duration);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TIME_ELAPSED, alert_job->time_elapsed);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_STATUS_VALUE, alert_job->value);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TIME_FROM, alert_job->time_from);
-//             config_buffer_ptr = bcprintf(config_buffer_ptr, &remaining, JSON_CONFIG_JOB_TIME_TO, alert_job->time_to);
-//             config_buffer_ptr = (char*)bcprintf(config_buffer_ptr, &remaining, "}");
-//
-//             WRITE_AND_RESET(fd, config_buffer, config_buffer_ptr, remaining);
-//         }
-//     }
-//
-//     bcprintf(config_buffer_ptr, &remaining,     "]");
-//
-//     // End Mqtt Config
-//     bcprintf(config_buffer_ptr, &remaining,   "}");
-//
-//     // End Config
-//     bcprintf(config_buffer_ptr, &remaining, "}\0");
-//
-//     WRITE_AND_RESET(fd, config_buffer, config_buffer_ptr, remaining);
-//     cfs_close(fd);
-//
-// }
-//
-// void
-// read_config(){
-//
-//     printf("read_config\n\r");
-//
-//     int fd;
-//     int len = 0;
-//
-//     fd = cfs_open(CONFIG_FILE_PATH, CFS_READ);
-//     printf("fd = %d\n\r", fd);
-//     if(fd < 0){
-//         return;
-//     }
-//
-//     printf("file is open\n\r");
-//     len = cfs_read(fd, config_buffer, MQTT_DATA_BUFFER_SIZE);
-//     if(len <= 0){
-//         return;
-//     }
-//
-//     struct jsonparse_state json;
-//     jsonparse_setup(&json, config_buffer, len);
-//
-//
-//     printf("json parse\n\r");
-//     while(JSON_HAS_NEXT(json)){
-//         jsonparse_next(&json);
-//
-//         printf("pos %d, len %d, depth %d, vstart %d, vlen %d, vtype %c, error %c \n\r",
-//             json.pos, json.len, json.depth, json.vstart, json.vlen, json.vtype, json.error);
-//
-//         if(!(JSON_IS_KEY(json))){
-//             continue;
-//         }
-//
-//         jsonparse_copy_value(&json, config_receive_buffer, MQTT_DATA_BUFFER_SIZE);
-//
-//         printf("value %s\n\r", config_receive_buffer);
-//
-//         // if(strcasecmp(receive_buffer, JSON_CONFIG_KEY_MQTT) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //     jsonparse_copy_value(&json, app_conf->mqtt_conf.username, MQTT_META_BUFFER_SIZE);
-//         // }
-//         //
-//         // if(strcasecmp(receive_buffer, JSON_CONFIG_USERNAME) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //     jsonparse_copy_value(&json, app_conf->mqtt_conf.username, MQTT_META_BUFFER_SIZE);
-//         // }else if(strcasecmp(receive_buffer, JSON_CONFIG_PASSWORD) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //     jsonparse_copy_value(&json, app_conf->mqtt_conf.password, MQTT_META_BUFFER_SIZE);
-//         // }else if(strcasecmp(receive_buffer, JSON_CONFIG_CLIENT_ID) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //     jsonparse_copy_value(&json, app_conf->mqtt_conf.password, MQTT_META_BUFFER_SIZE);
-//         // }else
-//
-//
-//
-//             // char username[CONFIG_USERNAME_LEN];
-//             // char password[CONFIG_PASSWORD_LEN];
-//             // char client_id[MQTT_META_BUFFER_SIZE];
-//             // char type_id[CONFIG_TYPE_ID_LEN];
-//             // char event_type_id[CONFIG_EVENT_TYPE_ID_LEN];
-//             // char broker_ip[CONFIG_IP_ADDR_STR_LEN];
-//             // char cmd_type[CONFIG_CMD_TYPE_LEN];
-//             // uint16_t broker_port;
-//             // int alert_check_interval;
-//             // mqtt_publish_status_job_t status_jobs[MAX_STATUS_JOBS];
-//             // mqtt_publish_alert_job_t alert_jobs[MAX_ALERT_JOBS];
-//
-//
-//         // if(strcasecmp(receive_buffer, JSON_KEY_TOPIC) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //
-//         //     jsonparse_copy_value(&json, status_job_buffer.topic, MQTT_META_BUFFER_SIZE);
-//         // }else if(strcasecmp(receive_buffer, JSON_KEY_STATUS) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //
-//         //     status_job_buffer.status = (device_status_t)jsonparse_get_value_as_int(&json);
-//         // }else if(strcasecmp(receive_buffer, JSON_KEY_INTERVAL) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //
-//         //     status_job_buffer.interval = jsonparse_get_value_as_int(&json);
-//         // }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_FROM) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count)
-//         //
-//         //     status_job_buffer.time_from = jsonparse_get_value_as_int(&json);
-//         // }else if(strcasecmp(receive_buffer, JSON_KEY_TIME_TO) == 0){
-//         //     JSON_BACK_IF_NOT_VALUE(json, count);
-//         //
-//         //     status_job_buffer.time_to = jsonparse_get_value_as_int(&json);
-//         // }
-//     }
-//
-//     cfs_close(fd);
-// }
+void
+save_config(){
+
+    if(can_save == 0)
+        return;
+
+    mqtt_publish_status_job_t *status_job = NULL;
+    mqtt_publish_alert_job_t *alert_job = NULL;
+
+    ini_open(&config_state, CONFIG_FILE_PATH);
+
+    ini_write_group(&config_state, JSON_CONFIG_KEY_PING);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_INTERVAL, app_conf->ping_conf.interval);
+
+    ini_write_group(&config_state, JSON_CONFIG_KEY_MQTT);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_USERNAME, app_conf->mqtt_conf.username);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_PASSWORD, app_conf->mqtt_conf.password);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_CLIENT_ID, app_conf->mqtt_conf.client_id);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_TYPE_ID, app_conf->mqtt_conf.type_id);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_EVENT_TYPE_ID, app_conf->mqtt_conf.event_type_id);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_BROKER_IP, app_conf->mqtt_conf.broker_ip);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_BROKER_PORT, app_conf->mqtt_conf.broker_port);
+    ini_write_string(&config_state, JSON_CONFIG_KEY_CMD_TYPE, app_conf->mqtt_conf.cmd_type);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL, app_conf->mqtt_conf.alert_check_interval);
+
+    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+        if(app_conf->mqtt_conf.status_jobs[i].id == -1)
+            continue;
+
+        status_job = &(app_conf->mqtt_conf.status_jobs[i]);
+
+        ini_write_group(&config_state, JSON_CONFIG_JOB_KEY_STATUS_JOB);
+        ini_write_string(&config_state, JSON_CONFIG_JOB_KEY_TOPIC, status_job->topic);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_STATUS, status_job->status);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_ID, status_job->id);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_INTERVAL, status_job->interval);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_TIME_FROM, status_job->time_from);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_TIME_TO, status_job->time_to);
+
+    }
+
+    for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
+        if(app_conf->mqtt_conf.alert_jobs[i].id == -1)
+            continue;
+
+        alert_job = &(app_conf->mqtt_conf.alert_jobs[i]);
+
+        ini_write_group(&config_state, JSON_CONFIG_JOB_KEY_ALERT_JOB);
+        ini_write_string(&config_state, JSON_CONFIG_JOB_KEY_TOPIC, alert_job->topic);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_STATUS, alert_job->status);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_OPERATOR, alert_job->op);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_ID, alert_job->id);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_DURATION, alert_job->duration);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_TIME_ELAPSED, alert_job->time_elapsed);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_STATUS_VALUE, alert_job->value);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_TIME_FROM, alert_job->time_from);
+        ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_TIME_TO, alert_job->time_to);
+
+    }
+
+    ini_close(&config_state);
+}
+
+void
+read_config(){
+
+    if(!ini_open(&config_state, CONFIG_FILE_PATH)){
+        return;
+    }
+
+    can_save = 0;
+
+    status_job_list_init();
+    alert_job_list_init();
+
+    while(ini_read_next(&config_state) != INI_TYPE_EOF){
+
+        if(config_state.type != INI_TYPE_KEYVALUE){
+            continue;
+        }
+
+        if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_KEY_MQTT) == 0){
+            if(strcmp(config_state.key, JSON_CONFIG_KEY_USERNAME) == 0){
+                snprintf(app_conf->mqtt_conf.username, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_PASSWORD) == 0){
+                snprintf(app_conf->mqtt_conf.password, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_CLIENT_ID) == 0){
+                snprintf(app_conf->mqtt_conf.client_id, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_TYPE_ID) == 0){
+                snprintf(app_conf->mqtt_conf.type_id, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_EVENT_TYPE_ID) == 0){
+                snprintf(app_conf->mqtt_conf.event_type_id, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_BROKER_IP) == 0){
+                snprintf(app_conf->mqtt_conf.broker_ip, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_BROKER_PORT) == 0){
+                app_conf->mqtt_conf.broker_port = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_CMD_TYPE) == 0){
+                snprintf(app_conf->mqtt_conf.cmd_type, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL) == 0){
+                app_conf->mqtt_conf.alert_check_interval = atoi(config_state.data);
+            }
+
+        }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_KEY_PING) == 0){
+            if(strcmp(config_state.key, JSON_CONFIG_KEY_INTERVAL) == 0){
+                app_conf->ping_conf.interval = atoi(config_state.data);
+            }
+
+        }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_JOB_KEY_ALERT_JOB) == 0){
+
+            if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TOPIC) == 0){
+                snprintf(alert_job_buffer.topic, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_STATUS) == 0){
+                alert_job_buffer.status = (device_status_t)atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_OPERATOR) == 0){
+                alert_job_buffer.op = (compare_operator_t)atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_ID) == 0){
+                alert_job_buffer.id = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_DURATION) == 0){
+                alert_job_buffer.duration = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_STATUS_VALUE) == 0){
+                alert_job_buffer.value = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TIME_FROM) == 0){
+                alert_job_buffer.time_from = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TIME_TO) == 0){
+                alert_job_buffer.time_to = atoi(config_state.data);
+
+                alert_job_list_save(&alert_job_buffer);
+            }
+
+        }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_JOB_KEY_STATUS_JOB) == 0){
+            if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TOPIC) == 0){
+                snprintf(status_job_buffer.topic, INI_DATA_SIZE, config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_STATUS) == 0){
+                status_job_buffer.status = (device_status_t)atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_ID) == 0){
+                status_job_buffer.id = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_INTERVAL) == 0){
+                status_job_buffer.interval = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TIME_FROM) == 0){
+                status_job_buffer.time_from = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TIME_TO) == 0){
+                status_job_buffer.time_to = atoi(config_state.data);
+
+                status_job_list_save(&status_job_buffer);
+            }
+
+        }
+
+    }
+
+    ini_close(&config_state);
+    can_save = 1;
+}

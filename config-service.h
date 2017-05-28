@@ -6,7 +6,7 @@
 #include "./ping-service.h"
 #include "./mqtt-service.h"
 
-
+#define CONFIG_BUFFER_SIZE 128
 #define CONFIG_FILE_PATH "blabla"
 
 #define WRITE_AND_RESET(fd, buf, buf_ptr, remain) { \
@@ -14,6 +14,7 @@
     (buf_ptr) = (buf); \
     (remain) = MQTT_DATA_BUFFER_SIZE; \
 }
+
 
 typedef struct client_config {
     mqtt_client_config_t mqtt_conf;

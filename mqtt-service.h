@@ -65,8 +65,8 @@
 #define JSON_CONFIG_KEY_CMD_TYPE        "cmdType"
 #define JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL  "alertCheckInterval"
 
-#define JSON_CONFIG_JOB_KEY_STATUS_JOBS "statusJobs"
-#define JSON_CONFIG_JOB_KEY_ALERT_JOBS  "alertJobs"
+#define JSON_CONFIG_JOB_KEY_STATUS_JOB "statusJob"
+#define JSON_CONFIG_JOB_KEY_ALERT_JOB  "alertJob"
 #define JSON_CONFIG_JOB_KEY_TOPIC       "topic"
 #define JSON_CONFIG_JOB_KEY_STATUS      "status"
 #define JSON_CONFIG_JOB_KEY_ID          "id"
