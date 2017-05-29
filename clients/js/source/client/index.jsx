@@ -32,6 +32,7 @@ ReactDom.render(
                 <Route path="/details/:clientId" component={DetailsView}/>
 
                 <Route path="/addjob/:clientId" component={AddJobView}/>
+                <Route exact path="/addjob" component={AddJobView}/>
             </div>
         </Router>
     </Provider>,

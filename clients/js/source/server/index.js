@@ -37,7 +37,7 @@ var state = {
 
 // SOCKET-IO
 io.on('connection', function(socket){
-  console.log('socket.io user connected', state.devices);
+  console.log('socket.io user connected');
   io.emit("SaveDevices", state.devices);
 });
 
@@ -47,21 +47,19 @@ io.on('connection', function(socket){
 var client = mqtt.connect('mqtt://localhost:1883');
 
 client.on('connect', () => {
-
     state.subscribes.map(sub => client.subscribe(sub.topic));
-    // client.subscribe('clients/+');
-    // client.subscribe('job/details/#');
 });
 
 client.on('message', (topic, message) => {
     var msg = JSON.parse(message.toString());
 
-    console.log(topic, " : ", msg);
-
+    console.log("mqtt message receive :", topic);
+    console.log("message clientId : ", msg.clientId);
     /* wenn sich ein sensorknoten als aktiv meldet */
     if(topic.match(/^clients\/.*/))
     {
         state.devices[msg.clientId] = Object.assign({}, rawDevice, msg);
+        state.devices[msg.clientId].jobs = {};
 
         io.emit("SaveDevices", state.devices);
     }
@@ -71,22 +69,23 @@ client.on('message', (topic, message) => {
         state.devices[msg.clientId] = Object.assign({}, rawDevice, state.devices[msg.clientId] || {});
         state.devices[msg.clientId].jobs[msg.job.id] = Object.assign({}, msg.job);
 
-        console.log("job hinzugefuegt");
+        console.log("job hinzugefuegt : ", msg);
 
         io.emit("SaveDevices", state.devices);
     }
 
     if(topic.match(/^alert/)){
-        console.log("alarm ");
+        console.log("alarm ", msg);
 
         io.emit("Alert", msg);
     }
 
     if(topic.match(/^status/)){
-        console.log("status ");
 
-        
+        state.devices[msg.clientId] = Object.assign({}, rawDevice, state.devices[msg.clientId] || {});
+        state.devices[msg.clientId].status = Object.assign({}, msg);
 
+        console.log("status ", msg);
         io.emit("SaveDevices", state.devices);
     }
 
@@ -100,7 +99,7 @@ app.use(express.static('public/'));
 
 var router = express.Router();
 router.post('/job', function(req, res){
-    console.log(req.body);
+    console.log("/job router : ", req.body);
 
     var topic = "job/add/{type}{clientId}";
     if(req.body.job.type == 1) topic = topic.replace("{type}", "status");
@@ -108,6 +107,8 @@ router.post('/job', function(req, res){
     topic = topic.replace("{clientId}", req.body.clientId ? "/" + req.body.clientId : "");
 
     client.publish(topic, JSON.stringify(req.body.job));
+
+    res.json({success : true});
 })
 app.use('/api/v1', router);
 

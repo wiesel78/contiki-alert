@@ -94,12 +94,16 @@ class Container extends React.Component {
                         <option value="4">Uptime</option>
                         <option value="8">Battery</option>
                         <option value="32">Signalstärke</option>
+                        
+                        <option value="127" className={(this.state.type != 1 ? "hidden" : "")}>Alle</option>
                     </select>
                 </div>
+
                 <div className={"form-group " + (this.state.type != 1 ? "hidden" : "")}>
                     <label htmlFor="interval">Interval</label>
                     <input className="form-control input-lg" id="interval" type="number" value={this.state.interval} onChange={this.handleIntervalChange}/>
                 </div>
+
                 <div className={"form-group " + (this.state.type != 2 ? "hidden" : "")}>
                     <label htmlFor="borderValue">Grenzwert</label>
                     <input className="form-control input-lg" id="borderValue" type="number" value={this.state.value} onChange={this.handleValueChange}/>

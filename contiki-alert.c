@@ -124,8 +124,8 @@ publish_status(mqtt_publish_status_job_t *job)
         return;
     }
 
-    pub_item.topic_length = strlen(job->topic);
-    memcpy(pub_item.topic, job->topic, pub_item.topic_length);
+    memset(pub_item.topic, 0, MQTT_META_BUFFER_SIZE);
+    pub_item.topic_length = snprintf(pub_item.topic, MQTT_META_BUFFER_SIZE, job->topic);
     buffer_ptr = pub_item.data;
 
     // json begin
@@ -159,18 +159,19 @@ publish_status(mqtt_publish_status_job_t *job)
         buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_IPV6, ipv6_addr_str);
     }
 
-    // client-id
-    if((job->status) & DEVICE_STATUS_CLIENT_ID){
-        buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_CLIENT_ID, conf.mqtt_conf.client_id);
-    }
-
     // signal strength
     if((job->status) & DEVICE_STATUS_RSSI){
         buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_RSSI, state.ping_state.rssi);
     }
 
+    // client id
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_CLIENT_ID, conf.mqtt_conf.client_id);
+
     // job id
     buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_JOB_ID, job->id);
+
+    // job type
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_JOB_TYPE, JOB_TYPE_STATUS);
 
     // sequence number
     buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_SEQUENCE_NUMBER, state.mqtt_state.sequenz_number);
@@ -198,8 +199,8 @@ publish_alert(mqtt_publish_alert_job_t *job)
         return;
     }
 
-    pub_alert_item.topic_length = strlen(job->topic);
-    memcpy(pub_alert_item.topic, job->topic, MQTT_META_BUFFER_SIZE);
+    memset(pub_alert_item.topic, 0, MQTT_META_BUFFER_SIZE);
+    pub_alert_item.topic_length = snprintf(pub_alert_item.topic, MQTT_META_BUFFER_SIZE, job->topic);
     buffer_ptr = pub_alert_item.data;
 
     // json begin
@@ -229,11 +230,15 @@ publish_alert(mqtt_publish_alert_job_t *job)
     if((job->status) & DEVICE_STATUS_RSSI){
         buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_RSSI, state.ping_state.rssi);
     }
+
     // client id
-    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_CLIENT_ID, conf.mqtt_conf.client_id);
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_CLIENT_ID, conf.mqtt_conf.client_id);
 
     // job id
     buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_JOB_ID, job->id);
+
+    // job type
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_JOB_TYPE, JOB_TYPE_ALERT);
 
     // sequence number
     buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_SEQUENCE_NUMBER, state.mqtt_state.sequenz_number);
@@ -436,6 +441,8 @@ parse_status_job(char *job_as_json, uint16_t length)
         printf("job konnte nicht hinzugefuegt werden\n\r");
         return;
     }
+
+    publish_status_job_details(&(conf.mqtt_conf.status_jobs[index]));
 
     status_job_callback(&(conf.mqtt_conf.status_jobs[index]));
 }
@@ -778,6 +785,7 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
 
                 for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
                     if(conf.mqtt_conf.status_jobs[i].id > -1){
+                        status_job_callback(&(conf.mqtt_conf.status_jobs[i]));
                         publish_status_job_details(&(conf.mqtt_conf.status_jobs[i]));
                     }
                 }
