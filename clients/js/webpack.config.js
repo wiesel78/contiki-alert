@@ -1,36 +1,38 @@
-var webpack = require('webpack');
-var path = require('path');
+const path = require('path');
+var CopyWebpackPlugin = require('copy-webpack-plugin');
 
-var CLIENT_DIR = path.resolve(__dirname, 'src/client')
-var BUILD_DIR = path.resolve(__dirname, 'src/client/public');
-var APP_DIR = path.resolve(__dirname, 'src/client/app');
-
-var config = {
-    entry: APP_DIR + '/index.jsx',
-    output:{
-        path : BUILD_DIR,
-        filename:'bundle.js'
+module.exports = {
+    // watch : true,
+    context : __dirname,
+    entry : './source/client/index.jsx',
+    output : {
+        path : path.resolve('public'),
+        filename : 'build.js'
     },
-    devServer: {
-      inline: true,
-      contentBase: CLIENT_DIR,
-      port: 8100
-    },
-    module: {
-      rules: [
-        {
-          test: /.*\.jsx?$/,
-          include : APP_DIR,
-          exclude: /(node_modules|bower_components)/,
-          use: {
-            loader: 'babel-loader',
-            options: {
-              presets: ['es2015', 'react']
+    devtool : "source-map",
+    module : {
+        loaders : [
+            {
+                test : /\.jsx?$/,
+                loader : 'babel-loader',
+                query : {
+                    "presets" : ['es2015', 'react']
+                }
             }
-          }
-        }
-      ]
-    }
+        ]
+    },
+    plugins: [
+        new CopyWebpackPlugin([
+            { from: 'source/client/index.html', to: 'index.html' },
+            { from: 'source/client/main.css', to: 'main.css' },
+            { from: 'node_modules/socket.io-client/dist/socket.io.js', to : 'socket.io.js' },
+            { from: 'node_modules/bootstrap/dist/css/bootstrap.min.css', to : 'bootstrap.min.css' },
+            { from: 'node_modules/bootstrap/dist/css/bootstrap.min.css.map', to : 'bootstrap.min.css.map' }
+        ], {
+            // By default, we only copy modified files during
+            // a watch or webpack-dev-server build. Setting this
+            // to `true` copies all files.
+            copyUnmodified: true
+        })
+    ]
 };
-
-module.exports = config;
