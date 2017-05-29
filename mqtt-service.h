@@ -64,11 +64,13 @@
 #define JSON_CONFIG_KEY_BROKER_PORT     "brokerPort"
 #define JSON_CONFIG_KEY_CMD_TYPE        "cmdType"
 #define JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL  "alertCheckInterval"
+#define JSON_CONFIG_KEY_CURRENT_JOB_ID  "jobId"
 
 #define JSON_CONFIG_JOB_KEY_STATUS_JOB "statusJob"
 #define JSON_CONFIG_JOB_KEY_ALERT_JOB  "alertJob"
 #define JSON_CONFIG_JOB_KEY_TOPIC       "topic"
 #define JSON_CONFIG_JOB_KEY_STATUS      "status"
+#define JSON_CONFIG_JOB_KEY_TYPE        "type"
 #define JSON_CONFIG_JOB_KEY_ID          "id"
 #define JSON_CONFIG_JOB_KEY_INTERVAL    "interval"
 #define JSON_CONFIG_JOB_KEY_OPERATOR    "operator"
@@ -101,9 +103,9 @@
 #define JSON_STATUS_IPV6            "\"ipv6\":\"%s\","
 #define JSON_STATUS_RSSI            "\"signal\":\"%d\","
 #define JSON_STATUS_CLIENT_ID       "\"id\":\"%s\","
+#define JSON_STATUS_IS_ONLINE       "\"isOnline\":\"%d\","
+#define JSON_STATUS_JOB_ID          "\"jobId\":\"%d\","
 #define JSON_STATUS_SEQUENCE_NUMBER "\"sequence\":\"%d\""
-#define JSON_STATUS_IS_ONLINE       "\"isOnline\":\"%d\""
-#define JSON_STATUS_JOB_ID          "\"jobId\":\"%d\""
 
 /* config json keys */
 #define JSON_CONFIG_USERNAME        "\"" JSON_CONFIG_KEY_USERNAME "\":\"%s\","
@@ -117,6 +119,7 @@
 #define JSON_CONFIG_ALERT_CHECK_INTERVAL  "\"" JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL "\":%d,"
 
 #define JSON_CONFIG_JOB_TOPIC       "\"" JSON_CONFIG_JOB_KEY_TOPIC "\":\"%s\","
+#define JSON_CONFIG_JOB_TYPE      "\"" JSON_CONFIG_JOB_KEY_TYPE "\":%d,"
 #define JSON_CONFIG_JOB_STATUS      "\"" JSON_CONFIG_JOB_KEY_STATUS "\":%d,"
 #define JSON_CONFIG_JOB_ID          "\"" JSON_CONFIG_JOB_KEY_ID "\":%d,"
 #define JSON_CONFIG_JOB_INTERVAL    "\"" JSON_CONFIG_JOB_KEY_INTERVAL "\":%d,"
@@ -126,6 +129,29 @@
 #define JSON_CONFIG_JOB_STATUS_VALUE "\"" JSON_CONFIG_JOB_KEY_STATUS_VALUE "\":%d,"
 #define JSON_CONFIG_JOB_TIME_FROM   "\"" JSON_CONFIG_JOB_KEY_TIME_FROM "\":%d,"
 #define JSON_CONFIG_JOB_TIME_TO     "\"" JSON_CONFIG_JOB_KEY_TIME_TO "\":%d"
+
+#define JSON_CONFIG_JOBS "\"job\":"
+#define JSON_JOB_ALERT "{" \
+    JSON_CONFIG_JOB_TYPE \
+    JSON_CONFIG_JOB_TOPIC \
+    JSON_CONFIG_JOB_STATUS \
+    JSON_CONFIG_JOB_ID \
+    JSON_CONFIG_JOB_OPERATOR \
+    JSON_CONFIG_JOB_DURATION \
+    JSON_CONFIG_JOB_STATUS_VALUE \
+    JSON_CONFIG_JOB_TIME_FROM \
+    JSON_CONFIG_JOB_TIME_TO \
+"},"
+
+#define JSON_JOB_STATUS "{" \
+    JSON_CONFIG_JOB_TYPE \
+    JSON_CONFIG_JOB_TOPIC \
+    JSON_CONFIG_JOB_STATUS \
+    JSON_CONFIG_JOB_ID \
+    JSON_CONFIG_JOB_INTERVAL \
+    JSON_CONFIG_JOB_TIME_FROM \
+    JSON_CONFIG_JOB_TIME_TO \
+"},"
 
 #define JSON_HAS_NEXT(json)         ((json).pos < (json).len)
 #define JSON_IS_ERROR(json)         ((json).vtype == JSON_TYPE_ERROR)
@@ -286,6 +312,7 @@ typedef struct mqtt_client_config {
     char cmd_type[CONFIG_CMD_TYPE_LEN];
     uint16_t broker_port;
     int alert_check_interval;
+    int job_id;
     mqtt_publish_status_job_t status_jobs[MAX_STATUS_JOBS];
     mqtt_publish_alert_job_t alert_jobs[MAX_ALERT_JOBS];
 } mqtt_client_config_t;

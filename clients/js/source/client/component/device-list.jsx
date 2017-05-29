@@ -1,7 +1,7 @@
 import React from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
-import { withRouter } from 'react-router-dom'
+import { withRouter, Link } from 'react-router-dom'
 
 import { DeviceItem } from './'
 import { SaveDevices } from '../redux/devices'
@@ -14,7 +14,9 @@ class Container extends React.Component {
 
     render(){
         const items = Object.entries(this.props.devices).map(([key, item]) =>
-             <DeviceItem key={key} item={item}></DeviceItem>);
+             <Link to={"/details/" + key} key={key}>
+                 <DeviceItem item={item} />
+             </Link>);
 
         return (
             <div>

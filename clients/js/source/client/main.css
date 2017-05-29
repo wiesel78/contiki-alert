@@ -15,3 +15,7 @@
 .navigation-item-active {
     border-bottom: 3px solid gainsboro;
 }
+
+.hidden {
+    display: none;
+}

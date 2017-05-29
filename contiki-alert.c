@@ -96,7 +96,7 @@ publish_client_active(uint8_t is_last_will)
         "{\"%s\":%d,\"%s\":\"%s\"}",
         JSON_KEY_IS_ONLINE,
         is_last_will ? 0 : 1,
-        JSON_KEY_ID,
+        JSON_CONFIG_KEY_CLIENT_ID,
         conf.mqtt_conf.client_id);
 
     pub_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
@@ -242,11 +242,103 @@ publish_alert(mqtt_publish_alert_job_t *job)
     buffer_ptr = bcprintf(buffer_ptr, &remaining, "}");
 
     pub_alert_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
-    pub_item.qos_level = MQTT_QOS_LEVEL_0;
-    pub_item.retain = MQTT_RETAIN_OFF;
-    pub_item.is_last_will = 0;
+    pub_alert_item.qos_level = MQTT_QOS_LEVEL_0;
+    pub_alert_item.retain = MQTT_RETAIN_OFF;
+    pub_alert_item.is_last_will = 0;
 
     mqtt_service_publish(&pub_alert_item);
+}
+
+/* publish a status-job */
+static void
+publish_status_job_details(mqtt_publish_status_job_t *job)
+{
+    printf("begin publish status job details %d\n\r", job->id);
+
+    int remaining = MQTT_DATA_BUFFER_SIZE;
+
+
+    pub_item.topic_length = snprintf(pub_item.topic, MQTT_META_BUFFER_SIZE,
+        TOPIC_DETAILS_JOB, conf.mqtt_conf.client_id, job->id);
+
+    buffer_ptr = pub_item.data;
+
+    // json begin
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "{");
+
+    // alert job config
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_JOBS JSON_JOB_STATUS,
+        JOB_TYPE_STATUS,
+        job->topic,
+        job->status,
+        job->id,
+        job->interval,
+        job->time_from,
+        job->time_to
+    );
+
+    // client id
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_CLIENT_ID, conf.mqtt_conf.client_id);
+
+    // sequence number
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_SEQUENCE_NUMBER, state.mqtt_state.sequenz_number);
+
+    // json end
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "}");
+
+    pub_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
+    pub_item.qos_level = MQTT_QOS_LEVEL_1;
+    pub_item.retain = MQTT_RETAIN_ON;
+    pub_item.is_last_will = 0;
+
+    mqtt_service_publish(&pub_item);
+}
+
+/* publish a status-job */
+static void
+publish_alert_job_details(mqtt_publish_alert_job_t *job)
+{
+    printf("begin publish alert job details %d\n\r", job->id);
+
+    int remaining = MQTT_DATA_BUFFER_SIZE;
+
+
+    pub_item.topic_length = snprintf(pub_item.topic, MQTT_META_BUFFER_SIZE,
+        TOPIC_DETAILS_JOB, conf.mqtt_conf.client_id, job->id);
+
+    buffer_ptr = pub_item.data;
+
+    // json begin
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "{");
+
+    // alert job config
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_JOBS JSON_JOB_ALERT,
+        JOB_TYPE_ALERT,
+        job->topic,
+        job->status,
+        job->id,
+        job->op,
+        job->duration,
+        job->value,
+        job->time_from,
+        job->time_to
+    );
+
+    // client id
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CONFIG_CLIENT_ID, conf.mqtt_conf.client_id);
+
+    // sequence number
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_SEQUENCE_NUMBER, state.mqtt_state.sequenz_number);
+
+    // json end
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, "}");
+
+    pub_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
+    pub_item.qos_level = MQTT_QOS_LEVEL_1;
+    pub_item.retain = MQTT_RETAIN_ON;
+    pub_item.is_last_will = 0;
+
+    mqtt_service_publish(&pub_item);
 }
 
 /* call if status-job-add-request are valid and finished */
@@ -425,7 +517,6 @@ parse_alert_job(char *job_as_json, uint16_t length)
     }
 
     index = alert_job_list_save(&alert_job_buffer);
-
     show_alert_job(&alert_job_buffer);
 
     if(index < 0){
@@ -433,6 +524,7 @@ parse_alert_job(char *job_as_json, uint16_t length)
         return;
     }
 
+    publish_alert_job_details(&(conf.mqtt_conf.alert_jobs[index]));
 }
 
 /* parsing json to alert job and add them to status-job-list */
@@ -677,6 +769,18 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
 
                 printf("send client active message\n\r");
                 publish_client_active(0);
+
+                for(int i = 0 ; i < MAX_ALERT_JOBS ; i++){
+                    if(conf.mqtt_conf.alert_jobs[i].id > -1){
+                        publish_alert_job_details(&(conf.mqtt_conf.alert_jobs[i]));
+                    }
+                }
+
+                for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+                    if(conf.mqtt_conf.status_jobs[i].id > -1){
+                        publish_status_job_details(&(conf.mqtt_conf.status_jobs[i]));
+                    }
+                }
             }
         }
         else

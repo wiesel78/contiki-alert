@@ -17,8 +17,7 @@ export class DeviceItem extends React.Component {
 
         return (
             <div>
-                <button onClick={this.handleClick}>click me</button>
-                Home component {this.props.item.id}
+                <h3>{this.props.item.clientId}</h3>
             </div>
         );
     };

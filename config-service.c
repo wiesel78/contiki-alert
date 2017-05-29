@@ -20,19 +20,6 @@ static mqtt_publish_alert_job_t alert_job_buffer;
 static mqtt_publish_status_job_t status_job_buffer;
 static uint8_t can_save = 1;
 
-/* get the biggest status job id */
-int status_job_max_id(void)
-{
-    int max = 0;
-
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.status_jobs[i].id > max){
-            max = app_conf->mqtt_conf.status_jobs[i].id;
-        }
-    }
-
-    return max;
-}
 
 /* -1 if job is not exists or index of job if job exists */
 int status_job_exists(mqtt_publish_status_job_t *job)
@@ -71,7 +58,7 @@ int status_job_list_save(mqtt_publish_status_job_t *job)
                 sizeof(mqtt_publish_status_job_t));
 
         if(app_conf->mqtt_conf.status_jobs[index].id < 0)
-            app_conf->mqtt_conf.status_jobs[index].id = status_job_max_id() + 1;
+            app_conf->mqtt_conf.status_jobs[index].id = ++(app_conf->mqtt_conf.job_id);
     }
 
     printf("index in list_save %d\n\r", index);
@@ -119,19 +106,6 @@ void status_job_list_init(void)
     }
 }
 
-/* get the biggest status job id */
-int alert_job_max_id(void)
-{
-    int max = 0;
-
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.alert_jobs[i].id > max){
-            max = app_conf->mqtt_conf.alert_jobs[i].id;
-        }
-    }
-
-    return max;
-}
 
 /* -1 if job is not exists or index of job if job exists */
 int alert_job_exists(mqtt_publish_alert_job_t *job)
@@ -171,7 +145,7 @@ int alert_job_list_save(mqtt_publish_alert_job_t *job)
                 sizeof(mqtt_publish_alert_job_t));
 
         if(app_conf->mqtt_conf.alert_jobs[index].id < 0)
-            app_conf->mqtt_conf.alert_jobs[index].id = alert_job_max_id() + 1;
+            app_conf->mqtt_conf.alert_jobs[index].id = ++(app_conf->mqtt_conf.job_id);
 
         app_conf->mqtt_conf.alert_jobs[index].time_elapsed = 0;
     }
@@ -244,6 +218,7 @@ init_config(client_config_t *config, client_state_t *state)
 
     app_conf->mqtt_conf.broker_port = DEFAULT_BROKER_PORT;
     app_conf->mqtt_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
+    app_conf->mqtt_conf.job_id = 0;
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
 
     read_config();
@@ -336,6 +311,7 @@ save_config(){
     ini_write_int(&config_state, JSON_CONFIG_KEY_BROKER_PORT, app_conf->mqtt_conf.broker_port);
     ini_write_string(&config_state, JSON_CONFIG_KEY_CMD_TYPE, app_conf->mqtt_conf.cmd_type);
     ini_write_int(&config_state, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL, app_conf->mqtt_conf.alert_check_interval);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_CURRENT_JOB_ID, app_conf->mqtt_conf.job_id);
 
     for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.status_jobs[i].id == -1)
@@ -420,6 +396,9 @@ read_config(){
 
             }else if(strcmp(config_state.key, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL) == 0){
                 app_conf->mqtt_conf.alert_check_interval = atoi(config_state.data);
+
+            }else if(strcmp(config_state.key, JSON_CONFIG_KEY_CURRENT_JOB_ID) == 0){
+                app_conf->mqtt_conf.job_id = atoi(config_state.data);
             }
 
         }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_KEY_PING) == 0){
