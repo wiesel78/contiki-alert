@@ -32,3 +32,9 @@
     margin-bottom:3px;
     border:1px solid gainsboro;
 }
+
+.job-item {
+    padding-bottom:10px;
+    margin-bottom: 10px;
+    border-bottom:1px solid gainsboro;
+}
