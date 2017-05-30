@@ -25,11 +25,16 @@
 #define DEFAULT_STATUS_JOB_TOPIC "status/new"
 #define DEFAULT_ALERT_JOB_TOPIC "alert/new"
 
+#define SET_IPV6_ADDRESS(ipv6_buf) { \
+    memset((ipv6_buf), 0, sizeof((ipv6_buf))); \
+    ipaddr_sprintf((ipv6_buf), sizeof((ipv6_buf)), uip_ds6_defrt_choose()); \
+}
 
 client_config_t conf;
 client_state_t state;
 
 static int is_subscribe = 0;
+static char ipv6_addr_str[MQTT_META_BUFFER_SIZE];
 static char receive_buffer[MQTT_DATA_BUFFER_SIZE];
 static char *buffer_ptr;
 static mqtt_publish_status_job_t status_job_buffer;
@@ -91,13 +96,16 @@ publish_client_active(uint8_t is_last_will)
     pub_item.topic_length = strlen(pub_item.topic);
     buffer_ptr = pub_item.data;
 
+    SET_IPV6_ADDRESS(ipv6_addr_str);
+
     // payload
-    buffer_ptr = bcprintf(buffer_ptr, &remaining,
-        "{\"%s\":%d,\"%s\":\"%s\"}",
-        JSON_KEY_IS_ONLINE,
+    buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_CLIENT_ACTIVE,
         is_last_will ? 0 : 1,
-        JSON_CONFIG_KEY_CLIENT_ID,
-        conf.mqtt_conf.client_id);
+        conf.mqtt_conf.client_id,
+        ipv6_addr_str,
+        state.ping_state.rssi,
+        state.mqtt_state.sequenz_number
+    );
 
     pub_item.data_length = MQTT_DATA_BUFFER_SIZE - remaining;
     pub_item.qos_level = MQTT_QOS_LEVEL_1;
@@ -153,9 +161,9 @@ publish_status(mqtt_publish_status_job_t *job)
 
     // ipv6
     if((job->status) & DEVICE_STATUS_IPV6){
-        char ipv6_addr_str[64];
-        memset(ipv6_addr_str, 0, sizeof(ipv6_addr_str));
-        ipaddr_sprintf(ipv6_addr_str, sizeof(ipv6_addr_str), uip_ds6_defrt_choose());
+        SET_IPV6_ADDRESS(ipv6_addr_str);
+        // memset(ipv6_addr_str, 0, sizeof(ipv6_addr_str));
+        // ipaddr_sprintf(ipv6_addr_str, sizeof(ipv6_addr_str), uip_ds6_defrt_choose());
         buffer_ptr = bcprintf(buffer_ptr, &remaining, JSON_STATUS_IPV6, ipv6_addr_str);
     }
 

@@ -4,6 +4,7 @@ import { connect } from 'react-redux'
 import { withRouter, Link } from 'react-router-dom'
 
 import { SaveDevices } from '../redux/'
+import { JobItem, JobItemList, DeviceItem } from './'
 
 class Container extends React.Component {
 
@@ -14,13 +15,8 @@ class Container extends React.Component {
     render(){
 
         const devices = [];
-
-        if(this.props.match && this.props.match.params.clientId &&
-            this.props.devices[this.props.match.params.clientId])
-        {
-            console.log("match ", this.props.match.params.clientId, " devices ", this.props.devices);
-            const device = this.props.devices[this.props.match.params.clientId];
-
+        const device = this.props.devices[this.props.match.params.clientId];
+        if(device){
             devices.push(device);
         }else{
             Object.entries(this.props.devices).map(([key,item]) => devices.push(item));
@@ -28,15 +24,17 @@ class Container extends React.Component {
 
         const details = devices.map(item =>
             <div key={item.clientId}>
-                <h2>{item.clientId}</h2>
-
+                <DeviceItem item={item} extended="true"/>
+                <h4>Status Jobs</h4>
+                    <JobItemList device={item} type="1"/>
+                <h4>Alarm Jobs</h4>
+                    <JobItemList device={item} type="2"/>
                 <Link to={"/addjob/" + item.clientId} className="btn btn-primary">Job erstellen</Link>
+                <hr />
             </div>);
 
         return (
             <div>
-                details
-                <hr />
                 {details}
             </div>
         );

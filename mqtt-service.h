@@ -117,6 +117,7 @@
 #define JSON_CONFIG_BROKER_PORT     "\"" JSON_CONFIG_KEY_BROKER_PORT "\":%d,"
 #define JSON_CONFIG_CMD_TYPE        "\"" JSON_CONFIG_KEY_CMD_TYPE "\":\"%s\","
 #define JSON_CONFIG_ALERT_CHECK_INTERVAL  "\"" JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL "\":%d,"
+#define JSON_CONFIG_IS_ONLINE       "\"" JSON_KEY_IS_ONLINE "\":%d,"
 
 #define JSON_CONFIG_JOB_TOPIC       "\"" JSON_CONFIG_JOB_KEY_TOPIC "\":\"%s\","
 #define JSON_CONFIG_JOB_TYPE      "\"" JSON_CONFIG_JOB_KEY_TYPE "\":%d,"
@@ -152,6 +153,14 @@
     JSON_CONFIG_JOB_TIME_FROM \
     JSON_CONFIG_JOB_TIME_TO \
 "},"
+
+#define JSON_CLIENT_ACTIVE "{" \
+    JSON_CONFIG_IS_ONLINE \
+    JSON_CONFIG_CLIENT_ID \
+    JSON_STATUS_IPV6 \
+    JSON_STATUS_RSSI \
+    JSON_STATUS_SEQUENCE_NUMBER \
+"}"
 
 #define JSON_HAS_NEXT(json)         ((json).pos < (json).len)
 #define JSON_IS_ERROR(json)         ((json).vtype == JSON_TYPE_ERROR)

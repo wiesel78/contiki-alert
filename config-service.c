@@ -53,6 +53,10 @@ int status_job_list_save(mqtt_publish_status_job_t *job)
     index = index <= -1 ? status_job_list_get_free_slot() : index;
 
     if(index >= 0){
+        if(!ctimer_expired(&(app_conf->mqtt_conf.status_jobs[index].timer))){
+            ctimer_stop(&(app_conf->mqtt_conf.status_jobs[index].timer));
+        }
+
         memcpy( &(app_conf->mqtt_conf.status_jobs[index]),
                 job,
                 sizeof(mqtt_publish_status_job_t));

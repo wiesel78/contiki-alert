@@ -23,15 +23,17 @@ ReactDom.render(
             <div className="container">
                 <div className="navigation">
                     <Link className="navigation-item" to="/">Geräte</Link>
-                    <Link className="navigation-item" to="/details">b</Link>
-                    <Link className="navigation-item" to="/addjob">c</Link>
+                    <Link className="navigation-item" to="/details">Details</Link>
+                    <Link className="navigation-item" to="/addjob">Job</Link>
                 </div>
 
                 <Route exact path="/" component={DeviceListView}/>
 
-                <Route path="/details/:clientId" component={DetailsView}/>
+                <Route exact path="/details/:clientId" component={DetailsView}/>
+                <Route exact path="/details" component={DetailsView}/>
 
-                <Route path="/addjob/:clientId" component={AddJobView}/>
+                <Route exact path="/addjob/:clientId/:jobId" component={AddJobView}/>
+                <Route exact path="/addjob/:clientId" component={AddJobView}/>
                 <Route exact path="/addjob" component={AddJobView}/>
             </div>
         </Router>

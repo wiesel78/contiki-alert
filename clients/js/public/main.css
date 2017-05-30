@@ -19,3 +19,16 @@
 .hidden {
     display: none;
 }
+
+.device-status-list{
+    display:flex;
+    flex-wrap: wrap;
+}
+
+.detail-span {
+    padding:5px 5px;
+    border-radius:3px;
+    margin-right:5px;
+    margin-bottom:3px;
+    border:1px solid gainsboro;
+}

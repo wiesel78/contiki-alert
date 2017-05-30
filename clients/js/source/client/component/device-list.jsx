@@ -16,6 +16,7 @@ class Container extends React.Component {
         const items = Object.entries(this.props.devices).map(([key, item]) =>
              <Link to={"/details/" + key} key={key}>
                  <DeviceItem item={item} />
+                 <hr />
              </Link>);
 
         return (

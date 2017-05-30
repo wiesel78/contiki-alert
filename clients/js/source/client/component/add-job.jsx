@@ -2,8 +2,9 @@ import React from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import { withRouter, Link } from 'react-router-dom'
+import { push } from 'react-router-redux';
 
-import { saveJobsRest } from '../rest/'
+import { saveJobsRest, deleteJobsRest } from '../rest/'
 import { SaveDevices } from '../redux/'
 
 class Container extends React.Component {
@@ -14,15 +15,35 @@ class Container extends React.Component {
         this.state = {
             id : -1,
             type : 2,
-            topic : "alert/light",
+            topic : "alert",
             status : 1,
-            value : 14000,
             interval : 30,
             duration : 30,
+            value : 14000,
             operator : 2
         };
 
+        var device = props.devices[props.match.params.clientId];
+        if(device){
+            var job = device.jobs[props.match.params.jobId];
+            if(job){
+                this.state = {
+                    id : job.id,
+                    type : job.type,
+                    topic : job.topic,
+                    status : job.status,
+                    interval : job.interval ? job.interval : 30,
+                    duration : job.duration ? job.duration : 30,
+                    value : job.value ? job.value : 14000,
+                    operator : job.operator ? job.operator : 2
+                };
+            }
+        }
 
+
+
+
+        this.handleDelete = this.handleDelete.bind(this);
         this.handleClick = this.handleClick.bind(this);
         this.handleTopicChange = this.handleTopicChange.bind(this);
         this.handleStatusChange = this.handleStatusChange.bind(this);
@@ -33,13 +54,36 @@ class Container extends React.Component {
         this.handleIntervalChange = this.handleIntervalChange.bind(this);
     }
 
+    handleDelete(){
+        const device = this.props.devices[this.props.match.params.clientId];
+        if(!device)
+            return;
+
+        const job = device.jobs[this.props.match.params.jobId];
+        if(!job)
+            return;
+
+        deleteJobsRest(this.props.match.params.clientId, job)
+        .then(() => {
+            console.log("lösch request erfolgreich uebermittelt");
+            this.props.history.push('/');
+        });
+    }
+
     handleClick(event){
+        let defer;
+
         if(this.props.match && this.props.match.params.clientId){
             const clientId = this.props.match.params.clientId;
-            saveJobsRest(clientId, this.state);
+            defer = saveJobsRest(clientId, this.state);
         }else{
-            saveJobsRest("", this.state);
+            defer = saveJobsRest("", this.state);
         }
+
+        defer.then(() => {
+            console.log("erfolgreich gesendet");
+            this.props.history.push('/');
+        });
     }
 
     handleTopicChange(event){
@@ -63,7 +107,14 @@ class Container extends React.Component {
     }
 
     handleTypeChange(event){
-        this.setState({ type : parseInt(event.target.value) });
+        let type = parseInt(event.target.value);
+        if(this.state.topic == "alert" && type == 1){
+            this.setState({ topic : "status" });
+        }else if(this.state.topic == "status" && type == 2){
+            this.setState({ topic : "alert" });
+        }
+
+        this.setState({ type });
     }
 
     handleIntervalChange(event){
@@ -71,7 +122,7 @@ class Container extends React.Component {
     }
 
     render(){
-        console.log(this.state);
+        console.log(this.props);
 
         return (
             <form>
@@ -94,7 +145,7 @@ class Container extends React.Component {
                         <option value="4">Uptime</option>
                         <option value="8">Battery</option>
                         <option value="32">Signalstärke</option>
-                        
+
                         <option value="127" className={(this.state.type != 1 ? "hidden" : "")}>Alle</option>
                     </select>
                 </div>
@@ -121,7 +172,10 @@ class Container extends React.Component {
                         <option value="1">unterschritten wird</option>
                     </select>
                 </div>
-                <button className="btn btn-primary btn-lg btn-block" onClick={this.handleClick}>Job erstellen</button>
+                <button className="btn btn-primary btn-lg btn-block" onClick={this.handleClick}>
+                    Job speichern
+                </button>
+                <button className={"btn btn-danger btn-lg btn-block " + (this.props.match.params.jobId ? "" : "hidden")} onClick={this.handleDelete}>Job löschen</button>
             </form>
         );
     };
@@ -131,5 +185,5 @@ export const AddJobView = withRouter(connect(
     state => ({
         devices : state.deviceState.devices
     }),
-    { SaveDevices }
+    { SaveDevices, push }
 )(Container));
