@@ -29,8 +29,6 @@ class Container extends React.Component {
         var items = [];
         const job = this.props.job;
 
-        console.log("job :::: ", job);
-
         if(job.type == 1){
             items = [
                 <div key="id" className="col-xs-5 col-md-1">ID: {job.id}</div>,

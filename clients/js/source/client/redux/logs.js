@@ -2,8 +2,15 @@
 export const SAVE_ALERT_LOGS = "SaveAlertLogs";
 export const SAVE_STATUS_LOGS = "SaveStatusLogs";
 
+
+
 export const SaveAlertLogs = (alerts = []) => {
     return { type : SAVE_ALERT_LOGS, alerts };
+};
+
+export const LogAlertMessage = (message = {}) => {
+    message.date = Date.now();
+    return SaveAlertLogs([message]);
 };
 
 export const SaveStatusLogs = (stats = []) => {
@@ -23,11 +30,11 @@ export const LogReducers = (state = InitialLogState, action) =>
     {
         case SAVE_ALERT_LOGS:
             return Object.assign({}, state,
-                { alerts : [ ...state.alerts, action.alerts] });
+                { alerts : [ ...state.alerts ].concat(action.alerts) });
         case SAVE_STATUS_LOGS:
             console.log("state status : ", state);
             return Object.assign({}, state,
-                { stats : [ ...state.stats, action.stats] });
+                { stats : [ ...state.stats].concat(action.stats) });
         default:
             return state;
     }

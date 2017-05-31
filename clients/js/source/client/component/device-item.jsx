@@ -13,8 +13,6 @@ export class DeviceItem extends React.Component {
     }
 
     render(){
-        console.log("ssss : ", this.props.item);
-
         const device = this.props.item;
         const stats = [
             <span key="ipv6" className="detail-span">ipv6 : {device.status.ipv6} </span>,

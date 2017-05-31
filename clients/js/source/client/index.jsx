@@ -6,14 +6,14 @@ import { Provider } from 'react-redux'
 import createHistory from 'history/createBrowserHistory'
 import { createStore, combineReducers } from 'redux'
 import { socket, CreateSubscribes } from './push/'
-import { DeviceListView, DetailsView, AddJobView } from './component/'
+import { DeviceListView, DetailsView, AddJobView, AlertListView, AlertCounter } from './component/'
 import { reducers, SaveDevices, DeviceReducers } from './redux/'
 
 // Create a history of your choosing (we're using a browser history in this case)
 let history = createHistory();
 let store = createStore(combineReducers(reducers));
 
-store.subscribe(() => console.log(store.getState()));
+//store.subscribe(() => console.log(store.getState()));
 
 CreateSubscribes(socket, store);
 
@@ -25,6 +25,7 @@ ReactDom.render(
                     <Link className="navigation-item" to="/">Geräte</Link>
                     <Link className="navigation-item" to="/details">Details</Link>
                     <Link className="navigation-item" to="/addjob">Job</Link>
+                    <Link className="navigation-item" to="/alerts">Alarm <AlertCounter /></Link>
                 </div>
 
                 <Route exact path="/" component={DeviceListView}/>
@@ -35,6 +36,8 @@ ReactDom.render(
                 <Route exact path="/addjob/:clientId/:jobId" component={AddJobView}/>
                 <Route exact path="/addjob/:clientId" component={AddJobView}/>
                 <Route exact path="/addjob" component={AddJobView}/>
+
+                <Route exact path="/alerts" component={AlertListView}/>
             </div>
         </Router>
     </Provider>,

@@ -38,3 +38,7 @@
     margin-bottom: 10px;
     border-bottom:1px solid gainsboro;
 }
+
+.alert-counter {
+    font-size:9pt;
+}
