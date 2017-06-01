@@ -42,6 +42,7 @@
 #define DEFAULT_KEEP_ALIVE_TIMER    60
 
 #define PUBLISH_TRIGGER             &button_sensor
+#define REBOOT_TRIGGER              &button_down_sensor
 #define RETRY_FOREVER               0xFF
 #define RECONNECT_INTERVAL          (CLOCK_SECOND * 2)
 #define RECONNECT_ATTEMPTS          RETRY_FOREVER

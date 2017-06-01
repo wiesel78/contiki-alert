@@ -50,6 +50,6 @@ router.get('/logs/status', function(req, res){
 app.use('/api/v1', router);
 
 // listen on port 8080
-http.listen(8080, function () {
-  console.log('Example app listening on port 8080!');
+http.listen(80, function () {
+  console.log('Example app listening on port 80!');
 });

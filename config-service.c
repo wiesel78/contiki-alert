@@ -1,5 +1,6 @@
 #include "contiki-conf.h"
 #include "cfs/cfs.h"
+#include "dev/watchdog.h"
 #include "rpl/rpl-private.h"
 #include "jsonparse.h"
 #include "jsontree.h"
@@ -467,4 +468,10 @@ read_config(){
 
     ini_close(&config_state);
     can_save = 1;
+}
+
+void
+delete_config(){
+    cfs_remove(CONFIG_FILE_PATH);
+    watchdog_reboot();
 }

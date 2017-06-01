@@ -45,5 +45,6 @@ extern void alert_job_list_init(void);
 
 extern void save_config();
 extern void read_config();
+extern void delete_config();
 
 #endif /* CONFIG_SERVICE_H_ */

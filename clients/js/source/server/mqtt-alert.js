@@ -96,7 +96,11 @@ class MqttAlert {
         });
 
         this.client.on('message', (topic, message) => {
-            var msg = JSON.parse(message.toString());
+            var msg = {};
+
+            try{
+                var msg = JSON.parse(message.toString());
+            }catch(e){return;}
 
             console.log("mqtt message receive :", topic);
             console.log("message clientId : ", msg);
