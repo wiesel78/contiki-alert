@@ -121,7 +121,7 @@
 #define JSON_CONFIG_IS_ONLINE       "\"" JSON_KEY_IS_ONLINE "\":%d,"
 
 #define JSON_CONFIG_JOB_TOPIC       "\"" JSON_CONFIG_JOB_KEY_TOPIC "\":\"%s\","
-#define JSON_CONFIG_JOB_TYPE      "\"" JSON_CONFIG_JOB_KEY_TYPE "\":%d,"
+#define JSON_CONFIG_JOB_TYPE        "\"" JSON_CONFIG_JOB_KEY_TYPE "\":%d,"
 #define JSON_CONFIG_JOB_STATUS      "\"" JSON_CONFIG_JOB_KEY_STATUS "\":%d,"
 #define JSON_CONFIG_JOB_ID          "\"" JSON_CONFIG_JOB_KEY_ID "\":%d,"
 #define JSON_CONFIG_JOB_INTERVAL    "\"" JSON_CONFIG_JOB_KEY_INTERVAL "\":%d,"
@@ -200,21 +200,20 @@ typedef enum {
 } compare_operator_t;
 
 typedef enum {
-    DEVICE_STATUS_LIGHT = 1 << 0,
-    DEVICE_STATUS_TEMPERATURE = 1 << 1,
-    DEVICE_STATUS_UPTIME = 1 << 2,
-    DEVICE_STATUS_POWER = 1 << 3,
-    DEVICE_STATUS_IPV6 = 1 << 4,
-    DEVICE_STATUS_RSSI = 1 << 5,
-    DEVICE_STATUS_CLIENT_ID = 1 << 6,
-    DEVICE_STATUS_ALL =
-        DEVICE_STATUS_LIGHT |
-        DEVICE_STATUS_TEMPERATURE |
-        DEVICE_STATUS_UPTIME |
-        DEVICE_STATUS_POWER |
-        DEVICE_STATUS_IPV6 |
-        DEVICE_STATUS_RSSI |
-        DEVICE_STATUS_CLIENT_ID,
+    DEVICE_STATUS_LIGHT         = 1 << 0,
+    DEVICE_STATUS_TEMPERATURE   = 1 << 1,
+    DEVICE_STATUS_UPTIME        = 1 << 2,
+    DEVICE_STATUS_POWER         = 1 << 3,
+    DEVICE_STATUS_IPV6          = 1 << 4,
+    DEVICE_STATUS_RSSI          = 1 << 5,
+    DEVICE_STATUS_CLIENT_ID     = 1 << 6,
+    DEVICE_STATUS_ALL           =   DEVICE_STATUS_LIGHT |
+                                    DEVICE_STATUS_TEMPERATURE |
+                                    DEVICE_STATUS_UPTIME |
+                                    DEVICE_STATUS_POWER |
+                                    DEVICE_STATUS_IPV6 |
+                                    DEVICE_STATUS_RSSI |
+                                    DEVICE_STATUS_CLIENT_ID,
 } device_status_t;
 
 typedef enum {
@@ -230,8 +229,8 @@ typedef enum {
 } mqtt_state_t;
 
 typedef enum {
-    JOB_TYPE_STATUS = 1 << 0,
-    JOB_TYPE_ALERT = 1 << 1,
+    JOB_TYPE_STATUS     = 1 << 0,
+    JOB_TYPE_ALERT      = 1 << 1,
 } job_type_t;
 
 
