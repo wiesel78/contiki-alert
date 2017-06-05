@@ -10,8 +10,10 @@
 
 #include "./ping-service.h"
 
-
+/* config contains the interval for periodic send ping request */
 ping_client_config_t *ping_conf;
+
+/* state contains the current rssi (signal strength) value */
 ping_service_state_t *ping_state;
 
 struct uip_icmp6_echo_reply_notification ping_notification;
