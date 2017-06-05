@@ -1,3 +1,8 @@
+/*
+    MQTT-Service is a abstraction layer to send mqtt message with
+    job queue
+ */
+
 #ifndef MQTT_SERVICE_H_
 #define MQTT_SERVICE_H_
 
@@ -28,8 +33,8 @@
 #define CONFIG_EVENT_TYPE_ID_LEN    32
 #define CONFIG_CMD_TYPE_LEN         8
 #define CONFIG_IP_ADDR_STR_LEN      64
-#define MAX_STATUS_JOBS             6
-#define MAX_ALERT_JOBS              6
+
+#define MAX_STATUS_JOBS             10
 #define MAX_TCP_SEGMENT_SIZE        32
 #define MAX_SUBSCRIBE_REPEAT        10
 #define MAX_PUBLISH_REPEAT          10
@@ -128,7 +133,6 @@
 #define JSON_CONFIG_JOB_ID          "\"" JSON_CONFIG_JOB_KEY_ID "\":%d,"
 #define JSON_CONFIG_JOB_INTERVAL    "\"" JSON_CONFIG_JOB_KEY_INTERVAL "\":%d,"
 #define JSON_CONFIG_JOB_OPERATOR    "\"" JSON_CONFIG_JOB_KEY_OPERATOR "\":%d,"
-#define JSON_CONFIG_JOB_DURATION    "\"" JSON_CONFIG_JOB_KEY_DURATION "\":%d,"
 #define JSON_CONFIG_JOB_TIME_ELAPSED "\"" JSON_CONFIG_JOB_KEY_TIME_ELAPSED "\":%d,"
 #define JSON_CONFIG_JOB_STATUS_VALUE "\"" JSON_CONFIG_JOB_KEY_STATUS_VALUE "\":%d,"
 #define JSON_CONFIG_JOB_TIME_FROM   "\"" JSON_CONFIG_JOB_KEY_TIME_FROM "\":%d,"
@@ -141,7 +145,7 @@
     JSON_CONFIG_JOB_STATUS \
     JSON_CONFIG_JOB_ID \
     JSON_CONFIG_JOB_OPERATOR \
-    JSON_CONFIG_JOB_DURATION \
+    JSON_CONFIG_JOB_INTERVAL \
     JSON_CONFIG_JOB_STATUS_VALUE \
     JSON_CONFIG_JOB_TIME_FROM \
     JSON_CONFIG_JOB_TIME_TO \
@@ -189,6 +193,7 @@
 
 #define GET_UPTIME (clock_seconds())
 
+/* possible op values in a alert job */
 typedef enum {
     COMPARE_OPERATOR_LOWER = 0x1,
     COMPARE_OPERATOR_GREATER = 0x2,
@@ -201,6 +206,7 @@ typedef enum {
         COMPARE_OPERATOR_EQUAL,
 } compare_operator_t;
 
+/* specify flags for different values of sensor node */
 typedef enum {
     DEVICE_STATUS_LIGHT         = 1 << 0,
     DEVICE_STATUS_TEMPERATURE   = 1 << 1,
@@ -218,6 +224,7 @@ typedef enum {
                                     DEVICE_STATUS_CLIENT_ID,
 } device_status_t;
 
+/* possible states for mqtt state machine */
 typedef enum {
     MQTT_SERVICE_STATE_INIT,
     MQTT_SERVICE_STATE_REGISTERED,
@@ -230,17 +237,22 @@ typedef enum {
     MQTT_SERVICE_STATE_ERROR,
 } mqtt_state_t;
 
+/* status jobs are periodic send the device status
+ * alert jobs send alert message if a sensor value is pass a border value
+ * for specific time */
 typedef enum {
     JOB_TYPE_STATUS     = 1 << 0,
     JOB_TYPE_ALERT      = 1 << 1,
 } job_type_t;
 
 
+/* item that conatins full subscription informations */
 typedef struct subscribe_item {
     char topic[MQTT_META_BUFFER_SIZE];
     uint8_t topic_length;
 } subscribe_item_t;
 
+/* item that contains a full message to send */
 typedef struct publish_item {
     mqtt_qos_level_t qos_level;
     mqtt_retain_t retain;
@@ -251,12 +263,14 @@ typedef struct publish_item {
     uint16_t data_length;
 } publish_item_t;
 
+/* subscribe job for subscribe a topic */
 typedef struct mqtt_subscribe_job {
     char *topic;
     mqtt_qos_level_t qos_level;
     struct ctimer sub_timer;
 } mqtt_subscribe_job_t;
 
+/* base publish job */
 typedef struct mqtt_publish_job {
     char *topic;
     uint8_t topic_len;
@@ -265,18 +279,7 @@ typedef struct mqtt_publish_job {
     struct ctimer timer;
 } mqtt_publish_job_t;
 
-typedef struct mqtt_publish_status_job {
-    char topic[MQTT_META_BUFFER_SIZE];
-    device_status_t status;
-    int id;
-    int interval;
-    int time_from;
-    int time_to;
-    struct ctimer timer;
-} mqtt_publish_status_job_t;
-
-
-/*
+/* specific job type to send a status or alert message
  * example light :
  *      from,
  *      to,
@@ -285,18 +288,19 @@ typedef struct mqtt_publish_status_job {
  *          (lower/greater)[equal]:
  *          value
  */
-typedef struct mqtt_publish_alert_job {
+typedef struct mqtt_publish_status_job {
     char topic[MQTT_META_BUFFER_SIZE];
     device_status_t status;
     compare_operator_t op;
+    job_type_t type;
     int id;
+    int interval;
     int time_from;
     int time_to;
-    int duration;
     int time_elapsed;
     int value;
     struct ctimer timer;
-} mqtt_publish_alert_job_t;
+} mqtt_publish_status_job_t;
 
 typedef struct mqtt_service_state {
     mqtt_state_t state;
@@ -325,23 +329,32 @@ typedef struct mqtt_client_config {
     int alert_check_interval;
     int job_id;
     mqtt_publish_status_job_t status_jobs[MAX_STATUS_JOBS];
-    mqtt_publish_alert_job_t alert_jobs[MAX_ALERT_JOBS];
 } mqtt_client_config_t;
 
 extern process_event_t mqtt_event;
 
-/* Methods */
+/* initialize mqtt-service
+ * @param p : pointer to main process
+ * @param config : config object for mqtt connection and job queues
+ * @param state : state object that contains live informations of this service
+ */
 extern void mqtt_service_init(  struct process *p,
                                 mqtt_client_config_t *config,
                                 mqtt_service_state_t *state);
-extern void mqtt_service_update(process_event_t ev, process_data_t data);
+
+/* check for connectivity
+ * @return 1 if conection is established, 0 if connection is down */
 extern int mqtt_service_is_connected(void);
 
+/* subscribe a topic
+ * @param topic : string that represent the topic of subscription
+ * @param qos_level : the Quality of Service level 0-2
+ */
 extern void mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level);
 
+/* publish by a Message by a publish_item
+ * @param pub_item : object that contains publish data and informations */
 extern void mqtt_service_publish(publish_item_t *pub_item);
-
-
 
 
 #endif /* MQTT_SERVICE_H_ */

@@ -21,7 +21,9 @@
 
 #define MAX_PUBLISH_QUEUE_ITEMS 16
 
+/* allocation set of queue wrapping items */
 MEMB(publish_queue_wrap_items, data_queue_item_t, (MAX_PUBLISH_QUEUE_ITEMS));
+/* allocation set of queued items */
 MEMB(publish_queue_items, publish_item_t, (MAX_PUBLISH_QUEUE_ITEMS)+1);
 
 /* Variables */
@@ -34,53 +36,54 @@ struct process *app_process;
 process_event_t mqtt_event;
 
 
-
+/* call if the led timer is triggered and take out the light */
 void led_handler(void *d)
 {
     leds_off(LED_CONNECTING);
 }
 
+/* set up connectiong to broker */
 void connect_to_broker(void)
 {
-    DBG("broker");
-
     mqtt_connect(   &conn,
                     mqtt_conf->broker_ip,
                     mqtt_conf->broker_port,
                     DEFAULT_KEEP_ALIVE_TIMER);
 
-
+    /* set the statemachine to the next state */
     mqtt_state->state = MQTT_SERVICE_STATE_CONNECTING;
 }
 
-/* behandelt empfangene Nachrichten.  */
+/* called if receive a subscription  */
 void publish_handler(   const char *topic, uint16_t topic_length,
                         const uint8_t *chunk, uint16_t chunk_length)
 {
-
+    /* call given callback if exists */
     if(mqtt_state->publish_handler != NULL)
     {
         (*(mqtt_state->publish_handler))(topic, topic_length, chunk, chunk_length);
     }
 }
 
+/* send the next message in queue if the buffer is free from last send */
 void
 mqtt_service_send(){
-    printf("send \n\r");
-
     mqtt_status_t status;
     publish_item_t *pub;
 
-
+    /* next message can only send if the buffer is free */
     if(mqtt_ready(&conn) && conn.out_buffer_sent){
 
-        printf("ready to send \n\r");
+        // pop the next item of queue
         pub = data_queue_dequeue(&publish_queue);
 
+        // increment the sequenz number
         (mqtt_state->sequenz_number)++;
 
+        // different mqtt app call if you will set a last will
         if(!pub->is_last_will){
-            printf("publish\n\r");
+
+            /* publish message */
             status = mqtt_publish(  &conn,
                                     NULL,
                                     pub->topic,
@@ -89,13 +92,14 @@ mqtt_service_send(){
                                     pub->qos_level,
                                     pub->retain);
 
+            /* check mqtt queue and reenque the message if mqtt queue is full */
             if(status == MQTT_STATUS_OUT_QUEUE_FULL){
                 printf("queue publish is full\n\r");
 
                 data_queue_enqueue(&publish_queue, pub);
             }
         }else{
-            printf("set last will\n\r");
+            // last will is set to set call a message if client los connection
             mqtt_set_last_will( &conn,
                                 pub->topic,
                                 pub->data,
@@ -103,25 +107,25 @@ mqtt_service_send(){
         }
     }
 
+    /* check the app queue and return if the queu is empty (all messages has send) */
     if(data_queue_peek(&publish_queue) == NULL){
         printf("queue is empty \n\r");
         return ;
     }
 
-
-    printf("queue has elements. set timer \n\r");
+    /* set timer to send the next message in queue with duration */
     ctimer_set( &(mqtt_state->publish_timer),
                 NET_CONNECT_PERIODIC,
                 mqtt_service_send, NULL);
 }
 
+/* put new publish item in the app queue */
 void
 mqtt_service_publish(publish_item_t *pub_item)
 {
-    printf("publish topic %s\n\r", pub_item->topic);
-
     data_queue_enqueue(&publish_queue, pub_item);
 
+    /* if the timer is not set, set the timer */
     if( &(mqtt_state->publish_timer) == NULL ||
         ctimer_expired(&(mqtt_state->publish_timer)))
     {
@@ -131,6 +135,7 @@ mqtt_service_publish(publish_item_t *pub_item)
 
 }
 
+/* repeat a subscription until the max subscribe counter has occours */
 void
 mqtt_service_subscribe_repeat(void *data)
 {
@@ -139,12 +144,15 @@ mqtt_service_subscribe_repeat(void *data)
         return;
     }
 
+    /* increment subscription counter */
     (mqtt_state->subscribe_tries)++;
 
+    /* recall subscription */
     mqtt_service_subscribe( mqtt_state->subscribe_job.topic,
                             mqtt_state->subscribe_job.qos_level);
 }
 
+/* subscribe a topic */
 void
 mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level)
 {
@@ -152,7 +160,7 @@ mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level)
 
     status = mqtt_subscribe(&conn, NULL, topic, qos_level);
 
-    DBG("APP - Subscribing! %d\n", status);
+    /* if not subscribe, set a time for resubscribe */
     if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
         DBG("APP - Tried to subscribe but command queue was full!\n");
 
@@ -168,7 +176,7 @@ mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level)
 
 
 
-/* behandelt mqtt events */
+/* handle mqtt events */
 void
 mqtt_event_handler(struct mqtt_connection *m, mqtt_event_t event, void *data)
 {
@@ -217,6 +225,7 @@ mqtt_event_handler(struct mqtt_connection *m, mqtt_event_t event, void *data)
     }
 }
 
+/* state machine for mqtt connection state*/
 void
 state_machine()
 {
