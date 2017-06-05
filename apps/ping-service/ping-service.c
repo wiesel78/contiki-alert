@@ -8,7 +8,6 @@
 #include "net/ipv6/sicslowpan.h"
 #include "sys/etimer.h"
 
-#include "./config-service.h"
 #include "./ping-service.h"
 
 
@@ -72,4 +71,21 @@ ping_service_update(process_event_t ev, process_data_t data)
         ping();
         etimer_set(&echo_request_timer, ping_conf->interval);
     }
+}
+
+
+PROCESS(ping_service, "Ping Service");
+AUTOSTART_PROCESSES(&ping_service);
+
+PROCESS_THREAD(ping_service, ev, data)
+{
+    PROCESS_BEGIN();
+
+    while(1){
+		PROCESS_YIELD();
+
+        ping_service_update(ev, data);
+    }
+
+    PROCESS_END();
 }

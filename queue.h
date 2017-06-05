@@ -4,8 +4,6 @@
 #include "contiki.h"
 #include "lib/memb.h"
 
-#define MQTT_QUEUE_MAX_ITEMS 16
-
 typedef struct data_queue_item {
     void *data_item;
     struct data_queue_item *next;
@@ -22,16 +20,16 @@ typedef struct data_queue {
 } data_queue_t;
 
 
-extern void 
+extern void
 data_queue_init(data_queue_t *queue, struct memb *queue_memb, struct memb *data_memb);
 
 extern void*
 data_queue_enqueue(data_queue_t *queue, void *data);
 
-extern void* 
+extern void*
 data_queue_peek(data_queue_t *queue);
 
-extern void* 
+extern void*
 data_queue_dequeue(data_queue_t *queue);
 
 #endif /* QUEUE_H_ */

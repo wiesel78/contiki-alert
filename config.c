@@ -4,8 +4,8 @@
 #include "rpl/rpl-private.h"
 #include "jsonparse.h"
 #include "jsontree.h"
-#include "./ping-service.h"
-#include "./config-service.h"
+#include "ping-service.h"
+#include "./config.h"
 #include "./io-utils.h"
 #include <stdio.h>
 

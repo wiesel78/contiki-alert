@@ -358,18 +358,18 @@ mqtt_service_is_connected(void)
     return mqtt_state->state == MQTT_SERVICE_STATE_READY ? 1 : 0;
 }
 
-// PROCESS(mqtt_service, "MQTT Service");
-// AUTOSTART_PROCESSES(&mqtt_service);
-//
-// PROCESS_THREAD(mqtt_service, ev, data)
-// {
-//     PROCESS_BEGIN();
-//
-//     while(1){
-//         PROCESS_WAIT_EVENT();
-//
-//
-//     }
-//
-//     PROCESS_END();
-// }
+PROCESS(mqtt_service, "MQTT Service");
+AUTOSTART_PROCESSES(&mqtt_service);
+
+PROCESS_THREAD(mqtt_service, ev, data)
+{
+    PROCESS_BEGIN();
+
+    while(1){
+		PROCESS_YIELD();
+
+        mqtt_service_update(ev, data);
+    }
+
+    PROCESS_END();
+}

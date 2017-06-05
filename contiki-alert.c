@@ -12,11 +12,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+
+#include "ping-service.h"
+#include "mqtt-service.h"
+
 #include "./project-conf.h"
 #include "./device-utils.h"
-#include "./ping-service.h"
-#include "./mqtt-service.h"
-#include "./config-service.h"
+#include "./config.h"
 #include "./net-utils.h"
 #include "./io-utils.h"
 
@@ -744,8 +746,8 @@ PROCESS_THREAD(mqtt_service_test, ev, data)
 	{
 		PROCESS_YIELD();
 
-        ping_service_update(ev, data);
-        mqtt_service_update(ev, data);
+        // ping_service_update(ev, data);
+        // mqtt_service_update(ev, data);
 
         if(mqtt_service_is_connected())
         {

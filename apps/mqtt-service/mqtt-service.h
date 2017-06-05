@@ -18,6 +18,8 @@
 /* Constants */
 #define MQTT_META_BUFFER_SIZE       64
 #define MQTT_DATA_BUFFER_SIZE       512
+
+#define MQTT_QUEUE_MAX_ITEMS        16
 /* CONFIG */
 #define CONFIG_USERNAME_LEN         32
 #define CONFIG_PASSWORD_LEN         32
