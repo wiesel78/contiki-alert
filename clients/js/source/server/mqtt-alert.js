@@ -47,10 +47,7 @@ class MqttAlert {
     saveJob(clientId, job){
         console.log("/job router : clientId : ", clientId, " job : ", job);
 
-        var topic = "job/add/{type}{clientId}";
-        if(job.type == 1) topic = topic.replace("{type}", "status");
-        if(job.type == 2) topic = topic.replace("{type}", "alert");
-        topic = topic.replace("{clientId}", clientId ? "/" + clientId : "");
+        var topic = "job/add" + (clientId ? "/" + clientId : "");
 
         this.client.publish(topic, JSON.stringify(job));
     }
@@ -58,10 +55,7 @@ class MqttAlert {
     deleteJob(clientId, job){
         console.log("/job/delete router : clientId : ", clientId, " job : ", job);
 
-        var topic = "job/delete/{type}{clientId}";
-        if(job.type == 1) topic = topic.replace("{type}", "status");
-        if(job.type == 2) topic = topic.replace("{type}", "alert");
-        topic = topic.replace("{clientId}", clientId ? "/" + clientId : "");
+        var topic = "job/delete" + (clientId ? "/" + clientId : "");
 
         this.client.publish(topic, JSON.stringify({jobId:job.id}));
 
@@ -121,7 +115,7 @@ class MqttAlert {
                 this.state.devices[msg.clientId].jobs[msg.job.id] = Object.assign({}, msg.job);
                 this.state.devices[msg.clientId].date = Date.now();
 
-                    console.log("füge job hinzu ", msg, this.state.devices[msg.clientId].jobs[msg.job.id]);
+                console.log("füge job hinzu ", msg, this.state.devices[msg.clientId].jobs[msg.job.id]);
                 this.callListener('job', this.state.devices[msg.clientId].jobs[msg.job.id]);
                 this.callListener('device', this.state.devices[msg.clientId]);
             }

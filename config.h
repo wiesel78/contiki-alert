@@ -1,10 +1,9 @@
 #ifndef CONFIG_SERVICE_H_
 #define CONFIG_SERVICE_H_
 
-
 #include "contiki-conf.h"
-#include "./ping-service.h"
-#include "./mqtt-service.h"
+#include "ping-service.h"
+#include "mqtt-service.h"
 
 #define CONFIG_BUFFER_SIZE 128
 #define CONFIG_FILE_PATH "blabla"
@@ -31,17 +30,11 @@ extern void update_mqtt_config(void);
 extern void update_ping_config(void);
 extern void update_config(void);
 
-extern void status_job_delete(int id);
-extern int status_job_exists(mqtt_publish_status_job_t *job);
-extern int status_job_list_get_free_slot(void);
-extern int status_job_list_save(mqtt_publish_status_job_t *job);
-extern void status_job_list_init(void);
-
-extern void alert_job_delete(int id);
-extern int alert_job_exists(mqtt_publish_alert_job_t *job);
-extern int alert_job_list_get_free_slot(void);
-extern int alert_job_list_save(mqtt_publish_alert_job_t *job);
-extern void alert_job_list_init(void);
+extern void job_delete(int id);
+extern int job_exists(mqtt_publish_status_job_t *job);
+extern int job_list_get_free_slot(void);
+extern int job_list_save(mqtt_publish_status_job_t *job);
+extern void job_list_init(void);
 
 extern void save_config();
 extern void read_config();

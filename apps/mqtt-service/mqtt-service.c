@@ -21,6 +21,8 @@
 
 #define MAX_PUBLISH_QUEUE_ITEMS 16
 
+PROCESS(mqtt_service_process, "MQTT Service");
+
 /* allocation set of queue wrapping items */
 MEMB(publish_queue_wrap_items, data_queue_item_t, (MAX_PUBLISH_QUEUE_ITEMS));
 /* allocation set of queued items */
@@ -259,8 +261,10 @@ state_machine()
                         CONNECTING_LED_DURATION,
                         led_handler, NULL);
             }
+            ctimer_set( &(mqtt_state->periodic_timer),
+                        NET_CONNECT_PERIODIC,
+                        state_machine, NULL);
 
-            etimer_set(&(mqtt_state->periodic_timer),NET_CONNECT_PERIODIC);
             return;
             break;
         case MQTT_SERVICE_STATE_CONNECTING:
@@ -281,6 +285,7 @@ state_machine()
             if(mqtt_ready(&conn) && conn.out_buffer_sent)
             {
                 mqtt_state->state = MQTT_SERVICE_STATE_READY;
+                process_post_synch(app_process, PROCESS_EVENT_CONTINUE, NULL);
                 return;
             }
             break;
@@ -300,9 +305,12 @@ state_machine()
 
                 DBG("Disconnected. Attempt %u in %lu ticks\n", connect_attempt, interval);
 
-                etimer_set(&(mqtt_state->periodic_timer), interval);
+                ctimer_set( &(mqtt_state->periodic_timer),
+                            interval,
+                            state_machine, NULL);
 
                 mqtt_state->state = MQTT_SERVICE_STATE_REGISTERED;
+                process_post_synch(app_process, PROCESS_EVENT_CONTINUE, NULL);
                 return;
             }
             else
@@ -320,7 +328,9 @@ state_machine()
             return;
     }
 
-    etimer_set(&(mqtt_state->periodic_timer), STATE_MACHINE_PERIODIC);
+    ctimer_set( &(mqtt_state->periodic_timer),
+                STATE_MACHINE_PERIODIC,
+                state_machine, NULL);
 }
 
 /* initialize */
@@ -338,6 +348,10 @@ mqtt_service_init(  struct process *p,
     message_pointer = 0;
 
     data_queue_init(&publish_queue, &publish_queue_wrap_items, &publish_queue_items);
+
+    ctimer_set( &(mqtt_state->periodic_timer),
+                STATE_MACHINE_PERIODIC,
+                state_machine, NULL);
 }
 
 /* bind this into the main-loop process_thread */
@@ -352,13 +366,6 @@ mqtt_service_update(process_event_t ev, process_data_t data)
             mqtt_state->state = MQTT_SERVICE_STATE_REGISTERED;
         }
     }
-
-    if( (ev == PROCESS_EVENT_TIMER && data == &(mqtt_state->periodic_timer)) ||
-        ev == PROCESS_EVENT_POLL)
-    {
-        DBG("event fired - activate state-machine\n\r");
-        state_machine();
-    }
 }
 
 int
@@ -367,15 +374,12 @@ mqtt_service_is_connected(void)
     return mqtt_state->state == MQTT_SERVICE_STATE_READY ? 1 : 0;
 }
 
-PROCESS(mqtt_service, "MQTT Service");
-AUTOSTART_PROCESSES(&mqtt_service);
-
-PROCESS_THREAD(mqtt_service, ev, data)
+PROCESS_THREAD(mqtt_service_process, ev, data)
 {
     PROCESS_BEGIN();
 
     while(1){
-		PROCESS_YIELD();
+		PROCESS_WAIT_EVENT();
 
         mqtt_service_update(ev, data);
     }

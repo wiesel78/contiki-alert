@@ -39,7 +39,7 @@ class Container extends React.Component {
         }else if(job.type == 2){
             items = [
                 <div key="id" className="col-xs-4 col-md-1">ID: {job.id}</div>,
-                <div key="duration" className="col-xs-8 col-md-2">Dauer: {job.duration}s</div>,
+                <div key="interval" className="col-xs-8 col-md-2">Dauer: {job.interval}s</div>,
                 <div key="status" className="col-xs-4 col-md-2">{this.getStatusNameOnce(job.status)}</div>,
                 <div key="operator" className="col-xs-4 col-md-2">{this.getOperator(job.operator)}</div>,
                 <div key="value" className="col-xs-4 col-md-1">{job.value}</div>,

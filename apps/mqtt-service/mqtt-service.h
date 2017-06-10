@@ -34,7 +34,7 @@
 #define CONFIG_CMD_TYPE_LEN         8
 #define CONFIG_IP_ADDR_STR_LEN      64
 
-#define MAX_STATUS_JOBS             10
+#define MAX_STATUS_JOBS             5
 #define MAX_TCP_SEGMENT_SIZE        32
 #define MAX_SUBSCRIBE_REPEAT        10
 #define MAX_PUBLISH_REPEAT          10
@@ -92,7 +92,7 @@
 #define JSON_KEY_TOPIC              "topic"
 #define JSON_KEY_STATUS             "status"
 #define JSON_KEY_INTERVAL           "interval"
-#define JSON_KEY_DURATION           "duration"
+#define JSON_KEY_TYPE               "type"
 #define JSON_KEY_TIME_FROM          "timeFrom"
 #define JSON_KEY_TIME_TO            "timeTo"
 #define JSON_KEY_STATUS_VALUE       "value"
@@ -139,7 +139,8 @@
 #define JSON_CONFIG_JOB_TIME_TO     "\"" JSON_CONFIG_JOB_KEY_TIME_TO "\":%d"
 
 #define JSON_CONFIG_JOBS "\"job\":"
-#define JSON_JOB_ALERT "{" \
+
+#define JSON_JOB "{" \
     JSON_CONFIG_JOB_TYPE \
     JSON_CONFIG_JOB_TOPIC \
     JSON_CONFIG_JOB_STATUS \
@@ -147,16 +148,6 @@
     JSON_CONFIG_JOB_OPERATOR \
     JSON_CONFIG_JOB_INTERVAL \
     JSON_CONFIG_JOB_STATUS_VALUE \
-    JSON_CONFIG_JOB_TIME_FROM \
-    JSON_CONFIG_JOB_TIME_TO \
-"},"
-
-#define JSON_JOB_STATUS "{" \
-    JSON_CONFIG_JOB_TYPE \
-    JSON_CONFIG_JOB_TOPIC \
-    JSON_CONFIG_JOB_STATUS \
-    JSON_CONFIG_JOB_ID \
-    JSON_CONFIG_JOB_INTERVAL \
     JSON_CONFIG_JOB_TIME_FROM \
     JSON_CONFIG_JOB_TIME_TO \
 "},"
@@ -280,19 +271,50 @@ typedef struct mqtt_publish_job {
 } mqtt_publish_job_t;
 
 /* specific job type to send a status or alert message
- * example light :
- *      from,
- *      to,
- *      if
- *          (light/temperature/power/rssi):device_status_t
- *          (lower/greater)[equal]:
- *          value
+ * @param topic : MQTT Topic string to address a publish job
+ * @param status : wich kind of sensor value you will send or observe
+ * @param type : type=1 - status job send periodically sensor node values
+ *               type=2 - alert job observe a sensor value and publish a alert
+ *                        if this value are to long greater or lower as the
+ *                        value in this struct
+ * @param op : only type=2, define the compare operation in alert jobs
+ *             if you will observe light and send a alert then
+ *             light value greater 10000, the op value is 2 and mean "greater"
+ * @param id : unique identifier for this job in job queue. -1 => autoincrement
+ * @param interval : time between to status jobs or time to observe a value
+ *                   before send a alert message
+ * @param time_from : clock time from when this job is active
+ * @param time_to : clock time from when this job is inactive
+ * @param time_elapsed : only type = 2, this value describes how long a value
+ *                       has already been observe without the alarm being struck
+ * @param value : only type = 2, border value of a alarm job
+ * @param timer : only type = 1, interval timer
+ *
+ * @example status job for all values every 30 seconds :
+ *  {
+ *      .id = -1,
+ *      .topic = "status/default",
+ *      .status = DEVICE_STATUS_ALL,
+ *      .interval = 30000,
+ *      .type = JOB_TYPE_STATUS
+ *  };
+ *
+ * @example alert job - when light is greater then 10000 for 10 minutes :
+ *  {
+ *      .id = -1,
+ *      .topic = "alert/light",
+ *      .status = DEVICE_STATUS_LIGHT,
+ *      .interval = 10*60,
+ *      .type = JOB_TYPE_ALERT,
+ *      .op = COMPARE_OPERATOR_GREATER,
+ *      .value = 10000
+ *  };
  */
 typedef struct mqtt_publish_status_job {
     char topic[MQTT_META_BUFFER_SIZE];
     device_status_t status;
-    compare_operator_t op;
     job_type_t type;
+    compare_operator_t op;
     int id;
     int interval;
     int time_from;
@@ -310,7 +332,7 @@ typedef struct mqtt_service_state {
     struct timer connection_life;
     struct ctimer led_timer;
     struct ctimer publish_timer;
-    struct etimer periodic_timer;
+    struct ctimer periodic_timer;
     struct ctimer alert_timer;
     mqtt_subscribe_job_t subscribe_job;
     void (*publish_handler)(const char *, uint16_t, const uint8_t *, uint16_t);
@@ -328,7 +350,7 @@ typedef struct mqtt_client_config {
     uint16_t broker_port;
     int alert_check_interval;
     int job_id;
-    mqtt_publish_status_job_t status_jobs[MAX_STATUS_JOBS];
+    mqtt_publish_status_job_t jobs[MAX_STATUS_JOBS];
 } mqtt_client_config_t;
 
 extern process_event_t mqtt_event;
@@ -355,6 +377,9 @@ extern void mqtt_service_subscribe(char *topic, mqtt_qos_level_t qos_level);
 /* publish by a Message by a publish_item
  * @param pub_item : object that contains publish data and informations */
 extern void mqtt_service_publish(publish_item_t *pub_item);
+
+
+PROCESS_NAME(mqtt_service_process);
 
 
 #endif /* MQTT_SERVICE_H_ */

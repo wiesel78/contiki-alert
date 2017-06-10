@@ -10,6 +10,8 @@
 
 #include "./ping-service.h"
 
+PROCESS(ping_service_process, "Ping Service");
+
 /* config contains the interval for periodic send ping request */
 ping_client_config_t *ping_conf;
 
@@ -75,16 +77,12 @@ ping_service_update(process_event_t ev, process_data_t data)
     }
 }
 
-
-PROCESS(ping_service, "Ping Service");
-AUTOSTART_PROCESSES(&ping_service);
-
-PROCESS_THREAD(ping_service, ev, data)
+PROCESS_THREAD(ping_service_process, ev, data)
 {
     PROCESS_BEGIN();
 
     while(1){
-		PROCESS_YIELD();
+        PROCESS_WAIT_EVENT();
 
         ping_service_update(ev, data);
     }

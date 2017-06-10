@@ -18,7 +18,6 @@ class Container extends React.Component {
             topic : "alert",
             status : 1,
             interval : 30,
-            duration : 30,
             value : 14000,
             operator : 2
         };
@@ -33,7 +32,6 @@ class Container extends React.Component {
                     topic : job.topic,
                     status : job.status,
                     interval : job.interval ? job.interval : 30,
-                    duration : job.duration ? job.duration : 30,
                     value : job.value ? job.value : 14000,
                     operator : job.operator ? job.operator : 2
                 };
@@ -48,10 +46,9 @@ class Container extends React.Component {
         this.handleTopicChange = this.handleTopicChange.bind(this);
         this.handleStatusChange = this.handleStatusChange.bind(this);
         this.handleValueChange = this.handleValueChange.bind(this);
-        this.handleDurationChange = this.handleDurationChange.bind(this);
         this.handleOperatorChange = this.handleOperatorChange.bind(this);
-        this.handleTypeChange = this.handleTypeChange.bind(this);
         this.handleIntervalChange = this.handleIntervalChange.bind(this);
+        this.handleTypeChange = this.handleTypeChange.bind(this);
     }
 
     handleDelete(){
@@ -98,12 +95,12 @@ class Container extends React.Component {
         this.setState({ value : parseInt(event.target.value) });
     }
 
-    handleDurationChange(event){
-        this.setState({ duration : parseInt(event.target.value) });
-    }
-
     handleOperatorChange(event){
         this.setState({ operator : parseInt(event.target.value) });
+    }
+
+    handleIntervalChange(event){
+        this.setState({ interval : parseInt(event.target.value) });
     }
 
     handleTypeChange(event){
@@ -115,10 +112,6 @@ class Container extends React.Component {
         }
 
         this.setState({ type });
-    }
-
-    handleIntervalChange(event){
-        this.setState({ interval : parseInt(event.target.value) });
     }
 
     render(){
@@ -163,7 +156,7 @@ class Container extends React.Component {
                     <label htmlFor="duration">Alarm auslösen wenn Grenzwert für</label>
 
                     <div className="input-group">
-                        <input className="form-control input-lg" id="duration" type="number" value={this.state.duration} onChange={this.handleDurationChange}/>
+                        <input className="form-control input-lg" id="duration" type="number" value={this.state.interval} onChange={this.handleIntervalChange}/>
                         <div className="input-group-addon">Sekunden</div>
                     </div>
 

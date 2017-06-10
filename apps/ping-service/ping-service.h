@@ -42,4 +42,6 @@ extern void ping_service_init(  ping_client_config_t *config,
 /* send a ping manually */
 extern void ping(void);
 
+PROCESS_NAME(ping_service_process);
+
 #endif /* PING_SERVICE_H_ */
