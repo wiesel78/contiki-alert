@@ -1,6 +1,11 @@
 # Prerequisites
 *.d
 
+# contiki
+*.bin
+*.cc2538dk
+obj_cc2538dk
+
 # Object files
 *.o
 *.ko
