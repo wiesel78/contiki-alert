@@ -17,8 +17,8 @@ io.on('connection', function(socket){
 
 // Alert bindings ans connect to devices
 mqttAlert.connect('mqtt://localhost:1883');
-mqttAlert.on('devices', devices => io.emit('SaveDevices', devices));
-mqttAlert.on('alert', message => io.emit('Alert', message));
+mqttAlert.on('devices', devices => {io.emit('SaveDevices', devices); console.log("devices");});
+mqttAlert.on('alert', message => {io.emit('Alert', message); console.log("alert");});
 
 // express addons
 app.use(bodyParser.urlencoded({ extended: true }));

@@ -25,8 +25,6 @@ class MqttAlert {
             device : [],
             devices : []
         }
-
-        console.log("hallo welt mqtt alert module");
     }
 
     on(listen, action){
@@ -87,9 +85,11 @@ class MqttAlert {
 
         this.client.on('connect', () => {
             this.state.subscribes.map(sub => this.client.subscribe(sub.topic));
+                console.log("mqtt connect. subscribe : ", this.state.subscribes);
         });
 
         this.client.on('message', (topic, message) => {
+            console.log("mqtt message");
             var msg = {};
 
             try{
