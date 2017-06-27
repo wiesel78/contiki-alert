@@ -5,6 +5,7 @@
 *.bin
 *.cc2538dk
 obj_cc2538dk
+obj_zoul
 
 # Object files
 *.o
