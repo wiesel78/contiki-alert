@@ -13,7 +13,10 @@
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
+
+#if CONTIKI_TARGET_CC2538DK
 #include "dev/cc2538-sensors.h"
+#endif /* CONTIKI_TARGET_CC2538DK */
 
 #include "./mqtt-service.h"
 #include "./queue.h"

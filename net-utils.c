@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "./net-utils.h"
 
+/* write ipv6 address into buffer */
 int
 ipaddr_sprintf(char *buf, uint8_t buf_len, const uip_ipaddr_t *addr)
 {

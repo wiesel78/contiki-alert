@@ -1,9 +1,16 @@
 #include "cfs/cfs.h"
+
 #include <stdio.h>
 #include <stdarg.h>
 
 #include "./io-utils.h"
 
+/* Helper function to write a buffer with text
+* @param buf : buffer pointer
+* @param remaining : pointer to char-counter
+* @param data : format string like a sprintf input string
+* @param ... : data arguments will be write in format string
+*/
 char* bcprintf(char *buf, int *remaining, const char *data, ...)
 {
     va_list argptr;
@@ -25,12 +32,15 @@ char* bcprintf(char *buf, int *remaining, const char *data, ...)
 }
 
 
-
+/* open a config file
+* @param state : pointer to state instance
+* @param file : filename of config file
+*/
 int
 ini_open(ini_state_t *state, const char *file){
 
     INI_RESET(state);
-    memset(state->group, 0, INI_KEY_SIZE);
+    memset(state->group, '\0', INI_KEY_SIZE);
 
     // check file string
     if(file == NULL || strlen(file) <= 0)
@@ -49,7 +59,9 @@ ini_open(ini_state_t *state, const char *file){
     return 1;
 }
 
-
+/* Write a group line (-groupName\n)
+* @param key : the name of the group
+*/
 int
 ini_write_group(ini_state_t *state, const char *key){
 
@@ -63,9 +75,7 @@ ini_write_group(ini_state_t *state, const char *key){
 
 /* write key value pair into the ini file on the current position
 * @param key : key as string
-* @param key_len : length of key string
 * @param data : value as string
-* @param data_len : length of data string
 * @return ...*/
 int
 ini_write_string(ini_state_t *state, const char *key, char *data){

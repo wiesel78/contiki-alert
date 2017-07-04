@@ -7,7 +7,10 @@
 #include "sys/ctimer.h"
 
 #include "dev/button-sensor.h"
+
+#if CONTIKI_TARGET_CC2538DK
 #include "dev/als-sensor.h"
+#endif /* CONTIKI_TARGET_CC2538DK */
 
 
 #include <stdio.h>
@@ -33,6 +36,7 @@
     ipaddr_sprintf((ipv6_buf), sizeof((ipv6_buf)), uip_ds6_defrt_choose()); \
 }
 
+// app config and state instances
 client_config_t conf;
 client_state_t state;
 
@@ -277,9 +281,11 @@ parse_job(char *job_as_json, uint16_t length)
         return;
     }
 
+    // create ja json parser
     struct jsonparse_state json;
     jsonparse_setup(&json, job_as_json, len);
 
+    // initialize job buffer with default values
     snprintf(job_buffer.topic, MQTT_META_BUFFER_SIZE, DEFAULT_STATUS_JOB_TOPIC);
     job_buffer.id = -1;
     job_buffer.type = JOB_TYPE_STATUS;
@@ -291,7 +297,7 @@ parse_job(char *job_as_json, uint16_t length)
     job_buffer.value = 14000;
     job_buffer.time_elapsed = 0;
 
-
+    // parse job json and write in job buffer
     while(JSON_HAS_NEXT(json)){
         jsonparse_next(&json);
 
@@ -345,6 +351,7 @@ parse_job(char *job_as_json, uint16_t length)
         return;
     }
 
+    // save job
     index = job_list_save(&job_buffer);
 
     if(index < 0){
@@ -352,10 +359,10 @@ parse_job(char *job_as_json, uint16_t length)
         return;
     }
 
-
-
+    // send data of job to the broker
     publish_job_details(&(conf.mqtt_conf.jobs[index]));
 
+    // if status job, begin the periodic event
     if(conf.mqtt_conf.jobs[index].type == JOB_TYPE_STATUS)
         status_job_callback(&(conf.mqtt_conf.jobs[index]));
 }
@@ -373,9 +380,11 @@ parse_delete_request(char *request, uint16_t length)
         return;
     }
 
+    // create jsonparser
     struct jsonparse_state json;
     jsonparse_setup(&json, request, len);
 
+    // get the job id to delete
     while(JSON_HAS_NEXT(json)){
         jsonparse_next(&json);
 
@@ -397,6 +406,7 @@ parse_delete_request(char *request, uint16_t length)
         return;
     }
 
+    // delete job
     job_delete(job_id);
 }
 
@@ -409,6 +419,7 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
     printf("topic %s (length:%u) chunk length : %u\n\r",
             topic, topic_length, chunk_length);
 
+    // create job request
     if(strncasecmp(topic, TOPIC_ADD_JOB_PREFIX, strlen(TOPIC_ADD_JOB_PREFIX)) == 0){
         if( strlen(topic) == strlen(TOPIC_ADD_JOB_PREFIX)
             || strstr(topic, conf.mqtt_conf.client_id) != NULL)
@@ -417,6 +428,7 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
             parse_job((char *)chunk, chunk_length);
         }
 
+    // delete job request
     }else if(strncasecmp(topic, TOPIC_DELETE_JOB_PREFIX, strlen(TOPIC_DELETE_JOB_PREFIX)) == 0){
 
         if( strlen(topic) == strlen(TOPIC_DELETE_JOB_PREFIX)
@@ -429,6 +441,10 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
     }
 }
 
+/* check value for its border values
+* @param sensorvalue : value to check
+* @param job : job of this value
+* @return 1 if alert, 0 if no alert, -1 if error */
 static int
 check_alert_value(int sensorvalue, mqtt_publish_status_job_t *job){
     switch(job->op){
@@ -448,9 +464,13 @@ check_alert_value(int sensorvalue, mqtt_publish_status_job_t *job){
     }
 }
 
+/* check current jobs for alert */
 static void
 check_for_alerts(){
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+    int i;
+
+    // visit all jobs
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(conf.mqtt_conf.jobs[i].id == -1 ||
            conf.mqtt_conf.jobs[i].type != JOB_TYPE_ALERT){
             continue;
@@ -515,8 +535,11 @@ check_for_alerts(){
 PROCESS(contiki_alert_process, "mqtt service process");
 AUTOSTART_PROCESSES(&contiki_alert_process, &ping_service_process, &mqtt_service_process);
 
+// entry point
 PROCESS_THREAD(contiki_alert_process, ev, data)
 {
+    int i;
+
 	PROCESS_BEGIN();
 
     if(init_config(&conf, &state) != 1)
@@ -526,8 +549,10 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
 
     update_config();
 
+    // set callback for subscribe messages
     (state.mqtt_state.publish_handler) = &subscribe_handler;
 
+    // initialize the services (ping for periodic ping, mqtt for mqtt api)
     ping_service_init(&(conf.ping_conf), &(state.ping_state));
     mqtt_service_init(&contiki_alert_process, &(conf.mqtt_conf), &(state.mqtt_state));
 
@@ -572,7 +597,7 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
             publish_client_active(0);
 
             // send job information and trigger first time all status jobs
-            for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+            for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
                 if(conf.mqtt_conf.jobs[i].id < 0)
                     continue;
 

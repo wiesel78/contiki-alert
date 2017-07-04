@@ -21,7 +21,9 @@ static uint8_t can_save = 1;
 /* -1 if job is not exists or index of job if job exists */
 int job_exists(mqtt_publish_status_job_t *job)
 {
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+    int i;
+
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.jobs[i].id == job->id && job->id != -1){
             return i;
         }
@@ -33,7 +35,9 @@ int job_exists(mqtt_publish_status_job_t *job)
 /* get the first element with id == -1 (empty element and place for new one)*/
 int job_list_get_free_slot(void)
 {
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++)
+    int i;
+
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++)
     {
         if(app_conf->mqtt_conf.jobs[i].id == -1){
             return i;
@@ -72,9 +76,10 @@ int job_list_save(mqtt_publish_status_job_t *job)
 /* delete job by id */
 void job_delete(int id)
 {
+    int i;
     mqtt_publish_status_job_t *job = NULL;
 
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.jobs[i].id == id && job->id != -1){
             job = &(app_conf->mqtt_conf.jobs[i]);
 
@@ -104,7 +109,9 @@ void job_delete(int id)
 /* initialize status job array */
 void job_list_init(void)
 {
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++)
+    int i;
+
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++)
     {
         app_conf->mqtt_conf.jobs[i].id = -1;
         app_conf->mqtt_conf.jobs[i].time_elapsed = 0;
@@ -185,7 +192,7 @@ void
 update_ping_config(void)
 {
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
-    app_state->ping_state.rssi = 0x8000000;
+    app_state->ping_state.rssi = 0; //0x8000000;
 
     return;
 }
@@ -198,19 +205,27 @@ update_config(void)
     update_ping_config();
 }
 
+/* Save current config data */
 void
-save_config(){
+save_config()
+{
+    int i;
 
+    // check config lock
     if(can_save == 0)
         return;
 
+    // initialize job buffer
     mqtt_publish_status_job_t *job = NULL;
 
+    // open config file
     ini_open(&config_state, CONFIG_FILE_PATH);
 
+    // write ping group
     ini_write_group(&config_state, JSON_CONFIG_KEY_PING);
     ini_write_int(&config_state, JSON_CONFIG_KEY_INTERVAL, app_conf->ping_conf.interval);
 
+    // write mqtt group
     ini_write_group(&config_state, JSON_CONFIG_KEY_MQTT);
     ini_write_string(&config_state, JSON_CONFIG_KEY_USERNAME, app_conf->mqtt_conf.username);
     ini_write_string(&config_state, JSON_CONFIG_KEY_PASSWORD, app_conf->mqtt_conf.password);
@@ -223,12 +238,13 @@ save_config(){
     ini_write_int(&config_state, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL, app_conf->mqtt_conf.alert_check_interval);
     ini_write_int(&config_state, JSON_CONFIG_KEY_CURRENT_JOB_ID, app_conf->mqtt_conf.job_id);
 
-    for(int i = 0 ; i < MAX_STATUS_JOBS ; i++){
+    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(app_conf->mqtt_conf.jobs[i].id == -1)
             continue;
 
         job = &(app_conf->mqtt_conf.jobs[i]);
 
+        // write job group
         ini_write_group(&config_state, JSON_CONFIG_JOB_KEY_STATUS_JOB);
         ini_write_string(&config_state, JSON_CONFIG_JOB_KEY_TOPIC, job->topic);
         ini_write_int(&config_state, JSON_CONFIG_JOB_KEY_STATUS, job->status);
@@ -246,23 +262,30 @@ save_config(){
     ini_close(&config_state);
 }
 
+/* read and parse the config file and write its data into app_conf */
 void
 read_config(){
 
+    // open the ini file (config file)
     if(!ini_open(&config_state, CONFIG_FILE_PATH)){
         return;
     }
 
+    // block config file
     can_save = 0;
 
+    // initialize the job list with dump-zero-jobs ...
     job_list_init();
 
+    // read every line in config file and write its data part into its conf part
     while(ini_read_next(&config_state) != INI_TYPE_EOF){
 
+        // visit only KEYVALUE types
         if(config_state.type != INI_TYPE_KEYVALUE){
             continue;
         }
 
+        // Group MQTT
         if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_KEY_MQTT) == 0){
             if(strcmp(config_state.key, JSON_CONFIG_KEY_USERNAME) == 0){
                 snprintf(app_conf->mqtt_conf.username, INI_DATA_SIZE, config_state.data);
@@ -295,11 +318,14 @@ read_config(){
                 app_conf->mqtt_conf.job_id = atoi(config_state.data);
             }
 
+
+        // Group PING
         }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_KEY_PING) == 0){
             if(strcmp(config_state.key, JSON_CONFIG_KEY_INTERVAL) == 0){
                 app_conf->ping_conf.interval = atoi(config_state.data);
             }
 
+        // Group Jobs
         }else if(strcmp(config_state.group, INI_VALUE_GROUP JSON_CONFIG_JOB_KEY_STATUS_JOB) == 0){
             if(strcmp(config_state.key, JSON_CONFIG_JOB_KEY_TOPIC) == 0){
                 snprintf(job_buffer.topic, INI_DATA_SIZE, config_state.data);
@@ -335,10 +361,14 @@ read_config(){
 
     }
 
+    // close config file
     ini_close(&config_state);
+
+    // get free
     can_save = 1;
 }
 
+/* delete the config file */
 void
 delete_config(){
     cfs_remove(CONFIG_FILE_PATH);

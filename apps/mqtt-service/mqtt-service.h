@@ -20,6 +20,16 @@
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 
+#if CONTIKI_TARGET_CC2538DK
+#define PUBLISH_TRIGGER             &button_sensor
+#define REBOOT_TRIGGER              &button_down_sensor
+#else
+#define PUBLISH_TRIGGER NULL
+#define REBOOT_TRIGGER NULL
+#endif
+
+
+
 /* Constants */
 #define MQTT_META_BUFFER_SIZE       64
 #define MQTT_DATA_BUFFER_SIZE       512
@@ -48,8 +58,6 @@
 #define DEFAULT_BROKER_PORT         1883
 #define DEFAULT_KEEP_ALIVE_TIMER    60
 
-#define PUBLISH_TRIGGER             &button_sensor
-#define REBOOT_TRIGGER              &button_down_sensor
 #define RETRY_FOREVER               0xFF
 #define RECONNECT_INTERVAL          (CLOCK_SECOND * 2)
 #define RECONNECT_ATTEMPTS          RETRY_FOREVER
