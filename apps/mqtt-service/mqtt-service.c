@@ -22,7 +22,7 @@
 #include "./queue.h"
 
 
-#define MAX_PUBLISH_QUEUE_ITEMS 16
+#define MAX_PUBLISH_QUEUE_ITEMS MQTT_QUEUE_MAX_ITEMS
 
 PROCESS(mqtt_service_process, "MQTT Service");
 

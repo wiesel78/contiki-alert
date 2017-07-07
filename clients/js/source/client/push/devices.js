@@ -2,6 +2,7 @@ import { SaveDevices, LogAlertMessage } from '../redux/'
 
 export const DeviceSubscribes = (socket, store) => {
     socket.on('SaveDevices', function(msg){
+        console.log("devices ", msg);
         store.dispatch(SaveDevices(msg));
     });
 

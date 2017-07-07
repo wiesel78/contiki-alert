@@ -16,6 +16,7 @@ class Container extends React.Component {
 
         const devices = [];
         const device = this.props.devices[this.props.match.params.clientId];
+
         if(device){
             devices.push(device);
         }else{

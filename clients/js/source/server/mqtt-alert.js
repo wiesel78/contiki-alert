@@ -1,6 +1,6 @@
 var mqtt = require('mqtt');
 
-const rawDevice = { clientId : -1, jobs : {}, status : {}, deletedJobs : []};
+const rawDevice = () => {return { jobs : {}, status : {}, deletedJobs : [] };};
 
 class MqttAlert {
 
@@ -43,21 +43,16 @@ class MqttAlert {
     }
 
     saveJob(clientId, job){
-        console.log("/job router : clientId : ", clientId, " job : ", job);
-
         var topic = "job/add" + (clientId ? "/" + clientId : "");
 
         this.client.publish(topic, JSON.stringify(job));
     }
 
     deleteJob(clientId, job){
-        console.log("/job/delete router : clientId : ", clientId, " job : ", job);
-
         var topic = "job/delete" + (clientId ? "/" + clientId : "");
 
         this.client.publish(topic, JSON.stringify({jobId:job.id}));
 
-        console.log("löschen von clientId : ", clientId, " jobid : ", job.id);
         this.deleteJobById(clientId, job.id);
     }
 
@@ -89,19 +84,17 @@ class MqttAlert {
         });
 
         this.client.on('message', (topic, message) => {
-            console.log("mqtt message");
             var msg = {};
 
             try{
                 var msg = JSON.parse(message.toString());
             }catch(e){return;}
 
-            console.log("mqtt message receive :", topic);
-            console.log("message clientId : ", msg);
+            console.log("mqtt message receive : topic : ", topic, " message : ", msg);
             /* wenn sich ein sensorknoten als aktiv meldet */
             if(topic.match(/^clients\/.*/))
             {
-                this.state.devices[msg.clientId] = Object.assign({}, rawDevice, { clientId : msg.clientId });
+                this.state.devices[msg.clientId] = Object.assign({}, rawDevice(), { clientId : msg.clientId });
                 this.state.devices[msg.clientId].status = Object.assign({}, msg);
                 this.state.devices[msg.clientId].date = Date.now();
 
@@ -111,11 +104,10 @@ class MqttAlert {
 
             /* wenn ein job hinzugefuegt wurde job/details/clienId/jobId */
             if(topic.match(/^job\/details\/(.*)\/(\d)/)){
-                this.state.devices[msg.clientId] = Object.assign({}, rawDevice, this.state.devices[msg.clientId] || {});
+                this.state.devices[msg.clientId] = Object.assign({}, rawDevice(), this.state.devices[msg.clientId] || {});
                 this.state.devices[msg.clientId].jobs[msg.job.id] = Object.assign({}, msg.job);
                 this.state.devices[msg.clientId].date = Date.now();
 
-                console.log("füge job hinzu ", msg, this.state.devices[msg.clientId].jobs[msg.job.id]);
                 this.callListener('job', this.state.devices[msg.clientId].jobs[msg.job.id]);
                 this.callListener('device', this.state.devices[msg.clientId]);
             }
@@ -131,7 +123,7 @@ class MqttAlert {
             /* Wenn ein status gemeldet wird */
             if(topic.match(/^status/)){
 
-                this.state.devices[msg.clientId] = Object.assign({}, rawDevice, this.state.devices[msg.clientId] || {});
+                this.state.devices[msg.clientId] = Object.assign({}, rawDevice(), this.state.devices[msg.clientId] || {});
                 this.state.devices[msg.clientId].status = Object.assign({}, this.state.devices[msg.clientId].status || {}, msg);
                 this.state.devices[msg.clientId].date = Date.now();
 
