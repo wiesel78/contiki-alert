@@ -2,8 +2,11 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "./io-utils.h"
+
+#include "./debug.h"
 
 /* Helper function to write a buffer with text
 * @param buf : buffer pointer
@@ -22,7 +25,7 @@ char* bcprintf(char *buf, int *remaining, const char *data, ...)
     va_end(argptr);
 
     if(len < 0 || len >= r){
-        printf("Buffer to short. Have %d, need %d + \\0\n", r, len);
+        PRINTF("Buffer to short. Have %d, need %d + \\0\n", r, len);
         return NULL;
     }
 
@@ -45,14 +48,14 @@ ini_open(ini_state_t *state, const char *file){
     // check file string
     if(file == NULL || strlen(file) <= 0)
     {
-        printf("file path is NULL or empty\n\r");
+        PRINTF("file path is NULL or empty\n\r");
         return -1;
     }
 
     // open file
     state->fd = cfs_open(file, CFS_READ | CFS_WRITE);
     if(state->fd < 0){
-        printf("can not open file %s\n\r", file);
+        PRINTF("can not open file %s\n\r", file);
         return -1;
     }
 

@@ -19,6 +19,7 @@
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
+#include "./debug.h"
 
 #if CONTIKI_TARGET_CC2538DK
 #define PUBLISH_TRIGGER             &button_sensor
@@ -31,10 +32,10 @@
 
 
 /* Constants */
-#define MQTT_META_BUFFER_SIZE       40 // 64
-#define MQTT_DATA_BUFFER_SIZE       300 // 512
+#define MQTT_META_BUFFER_SIZE       64 // 64
+#define MQTT_DATA_BUFFER_SIZE       512 // 512
 
-#define MQTT_QUEUE_MAX_ITEMS        6 // 16
+#define MQTT_QUEUE_MAX_ITEMS        16 // 16
 /* CONFIG */
 #define CONFIG_USERNAME_LEN         32
 #define CONFIG_PASSWORD_LEN         32
@@ -44,7 +45,7 @@
 #define CONFIG_CMD_TYPE_LEN         8
 #define CONFIG_IP_ADDR_STR_LEN      64
 
-#define MAX_STATUS_JOBS             5
+#define MAX_STATUS_JOBS             16
 #define MAX_TCP_SEGMENT_SIZE        32
 #define MAX_SUBSCRIBE_REPEAT        10
 #define MAX_PUBLISH_REPEAT          10
@@ -182,9 +183,9 @@
     jsonparse_next(&(json)); \
     if(!(JSON_IS_VALUE((json)))){ \
         if(JSON_IS_ERROR((json))){ \
-            printf("BINV error\n\r"); \
+            PRINTF("BINV error\n\r"); \
         } \
-        printf("BINV continue\n\r"); \
+        PRINTF("BINV continue\n\r"); \
         continue; \
     } \
     (count)++; \

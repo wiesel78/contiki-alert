@@ -1,6 +1,11 @@
 #ifndef IO_UTILS_H_
 #define IO_UTILS_H_
 
+#if CONTIKI_TARGET_SKY
+#include <limits.h>
+#include <string.h>
+#endif
+
 #include <stdio.h>
 #include <stdarg.h>
 

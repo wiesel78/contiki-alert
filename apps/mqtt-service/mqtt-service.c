@@ -21,6 +21,8 @@
 #include "./mqtt-service.h"
 #include "./queue.h"
 
+#include "./debug.h"
+
 
 #define MAX_PUBLISH_QUEUE_ITEMS MQTT_QUEUE_MAX_ITEMS
 
@@ -99,7 +101,7 @@ mqtt_service_send(){
 
             /* check mqtt queue and reenque the message if mqtt queue is full */
             if(status == MQTT_STATUS_OUT_QUEUE_FULL){
-                printf("queue publish is full\n\r");
+                PRINTF("queue publish is full\n\r");
 
                 data_queue_enqueue(&publish_queue, pub);
             }
@@ -114,7 +116,7 @@ mqtt_service_send(){
 
     /* check the app queue and return if the queu is empty (all messages has send) */
     if(data_queue_peek(&publish_queue) == NULL){
-        printf("queue is empty \n\r");
+        PRINTF("queue is empty \n\r");
         return ;
     }
 
@@ -134,7 +136,7 @@ mqtt_service_publish(publish_item_t *pub_item)
     if( &(mqtt_state->publish_timer) == NULL ||
         ctimer_expired(&(mqtt_state->publish_timer)))
     {
-        printf("no or expired timer. Send Message\n\r");
+        PRINTF("no or expired timer. Send Message\n\r");
         mqtt_service_send();
     }
 

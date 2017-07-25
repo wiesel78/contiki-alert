@@ -5,7 +5,7 @@
 #include "ping-service.h"
 #include "mqtt-service.h"
 
-#define CONFIG_BUFFER_SIZE 128
+#define CONFIG_BUFFER_SIZE 100
 #define CONFIG_FILE_PATH "conf.ini"
 
 #define WRITE_AND_RESET(fd, buf, buf_ptr, remain) { \

@@ -10,6 +10,8 @@
 
 #include "./ping-service.h"
 
+#include "./debug.h"
+
 PROCESS(ping_service_process, "Ping Service");
 
 /* config contains the interval for periodic send ping request */
@@ -46,7 +48,7 @@ ping_handler( uip_ipaddr_t *source, uint8_t ttl,
         ping_state->rssi = sicslowpan_get_last_rssi();
     }
 
-    printf("icmp response was receive with signal strenght : %d\n\r", ping_state->rssi);
+    PRINTF("icmp response was receive with signal strenght : %d\n\r", ping_state->rssi);
 }
 
 

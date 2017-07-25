@@ -8,6 +8,7 @@
 #include "./config.h"
 #include "./io-utils.h"
 #include <stdio.h>
+#include "./debug.h"
 
 
 client_config_t *app_conf;
@@ -66,7 +67,7 @@ int job_list_save(mqtt_publish_status_job_t *job)
             app_conf->mqtt_conf.jobs[index].id = ++(app_conf->mqtt_conf.job_id);
     }
 
-    printf("index in list_save %d\n\r", index);
+    PRINTF("index in list_save %d\n\r", index);
 
     save_config();
 
@@ -97,7 +98,7 @@ void job_delete(int id)
             job->time_from = 0;
             job->time_to = 0;
 
-            printf("job deleted by id %d\n\r", id);
+            PRINTF("job deleted by id %d\n\r", id);
         }
     }
 
@@ -164,7 +165,7 @@ construct_client_id(void)
 
   /* len < 0: Error. Len >= MQTT_DATA_BUFFER_SIZE: Buffer too small */
   if(len < 0 || len >= MQTT_DATA_BUFFER_SIZE) {
-    printf("Client ID: %d, Buffer %d\n", len, MQTT_DATA_BUFFER_SIZE);
+    PRINTF("Client ID: %d, Buffer %d\n", len, MQTT_DATA_BUFFER_SIZE);
     return 0;
   }
 

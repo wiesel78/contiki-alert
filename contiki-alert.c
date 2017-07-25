@@ -26,6 +26,8 @@
 #include "./net-utils.h"
 #include "./io-utils.h"
 
+#include "./debug.h"
+
 #define PUBLISH_SECONDS (CLOCK_SECOND * 10)
 
 #define DEFAULT_STATUS_JOB_TOPIC "status/new"
@@ -60,18 +62,18 @@ static mqtt_publish_status_job_t default_status_job = {
 static void
 show_status_job(mqtt_publish_status_job_t *job)
 {
-    printf("\n\r");
-    printf("## Job #%d -> %p \n\r", job->id, job);
-    printf("##   type : %d \n\r", job->type);
-    printf("##   topic : %s \n\r", job->topic);
-    printf("##   status : %d \n\r", (int)(job->status));
-    printf("##   time_from : %d \n\r", job->time_from);
-    printf("##   time_to : %d \n\r", job->time_to);
-    printf("##   interval : %d \n\r", job->interval);
-    printf("##\n\r");
-    printf("##   op : %d \n\r", job->op);
-    printf("##   value : %d \n\r", job->value);
-    printf("###################\n\r");
+    PRINTF("\n\r");
+    PRINTF("## Job #%d -> %p \n\r", job->id, job);
+    // PRINTF("##   type : %d \n\r", job->type);
+    // PRINTF("##   topic : %s \n\r", job->topic);
+    // PRINTF("##   status : %d \n\r", (int)(job->status));
+    // PRINTF("##   time_from : %d \n\r", job->time_from);
+    // PRINTF("##   time_to : %d \n\r", job->time_to);
+    // PRINTF("##   interval : %d \n\r", job->interval);
+    // PRINTF("##\n\r");
+    // PRINTF("##   op : %d \n\r", job->op);
+    // PRINTF("##   value : %d \n\r", job->value);
+    // PRINTF("###################\n\r");
 }
 
 /* publish a client active message (to have a client list on server side)
@@ -85,7 +87,7 @@ show_status_job(mqtt_publish_status_job_t *job)
 static void
 publish_client_active(uint8_t is_last_will)
 {
-    printf("publish client \n\r");
+    PRINTF("publish client \n\r");
 
     int remaining = MQTT_DATA_BUFFER_SIZE;
 
@@ -202,7 +204,7 @@ publish_job(mqtt_publish_status_job_t *job)
 static void
 publish_job_details(mqtt_publish_status_job_t *job)
 {
-    printf("publish job details of %d\n\r", job->id);
+    PRINTF("publish job details of %d\n\r", job->id);
 
     int remaining = MQTT_DATA_BUFFER_SIZE;
 
@@ -277,7 +279,7 @@ parse_job(char *job_as_json, uint16_t length)
     int index = -1;
 
     if(len < 1 || len > MQTT_DATA_BUFFER_SIZE){
-        printf("Buffer is to small\n\r");
+        PRINTF("Buffer is to small\n\r");
         return;
     }
 
@@ -347,7 +349,7 @@ parse_job(char *job_as_json, uint16_t length)
     }
 
     if(count <= 0){
-        printf("count == 0\n\r");
+        PRINTF("count == 0\n\r");
         return;
     }
 
@@ -355,7 +357,7 @@ parse_job(char *job_as_json, uint16_t length)
     index = job_list_save(&job_buffer);
 
     if(index < 0){
-        printf("job konnte nicht hinzugefuegt werden\n\r");
+        PRINTF("job konnte nicht hinzugefuegt werden\n\r");
         return;
     }
 
@@ -376,7 +378,7 @@ parse_delete_request(char *request, uint16_t length)
     int job_id = -1;
 
     if(len < 1 || len > MQTT_DATA_BUFFER_SIZE){
-        printf("Buffer is to small\n\r");
+        PRINTF("Buffer is to small\n\r");
         return;
     }
 
@@ -402,7 +404,7 @@ parse_delete_request(char *request, uint16_t length)
     }
 
     if(count <= 0 || job_id < 0){
-        printf("count == 0 or no job id was parsed\n\r");
+        PRINTF("count == 0 or no job id was parsed\n\r");
         return;
     }
 
@@ -416,7 +418,7 @@ static void
 subscribe_handler(  const char *topic, uint16_t topic_length,
             const uint8_t *chunk, uint16_t chunk_length)
 {
-    printf("topic %s (length:%u) chunk length : %u\n\r",
+    PRINTF("topic %s (length:%u) chunk length : %u\n\r",
             topic, topic_length, chunk_length);
 
     // create job request
@@ -424,7 +426,7 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
         if( strlen(topic) == strlen(TOPIC_ADD_JOB_PREFIX)
             || strstr(topic, conf.mqtt_conf.client_id) != NULL)
         {
-            printf("create job status\n\r");
+            PRINTF("create job status\n\r");
             parse_job((char *)chunk, chunk_length);
         }
 
@@ -434,7 +436,7 @@ subscribe_handler(  const char *topic, uint16_t topic_length,
         if( strlen(topic) == strlen(TOPIC_DELETE_JOB_PREFIX)
             || strstr(topic, conf.mqtt_conf.client_id) != NULL)
         {
-            printf("delete job status\n\r");
+            PRINTF("delete job status\n\r");
             parse_delete_request((char *)chunk, chunk_length);
         }
 
@@ -476,7 +478,7 @@ check_for_alerts(){
             continue;
         }
 
-        printf("alert job index %d\n\r", i);
+        PRINTF("alert job index %d\n\r", i);
 
         alert_extend_duration = 0;
         alert_status_buffer = conf.mqtt_conf.jobs[i].status;
@@ -518,7 +520,7 @@ check_for_alerts(){
         }
 
         if(conf.mqtt_conf.jobs[i].time_elapsed >= (conf.mqtt_conf.jobs[i].interval * CLOCK_SECOND)){
-            printf("alarm %d\n\r", conf.mqtt_conf.jobs[i].id);
+            PRINTF("alarm %d\n\r", conf.mqtt_conf.jobs[i].id);
             publish_job(&(conf.mqtt_conf.jobs[i]));
             conf.mqtt_conf.jobs[i].time_elapsed = 0;
         }
@@ -565,10 +567,10 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
             continue;
         }
 
-        // press select button to send a full status report
+        //press select button to send a full status report
         if(ev == sensors_event && data == PUBLISH_TRIGGER)
         {
-            printf("publish by press button\n\r");
+            PRINTF("publish by press button\n\r");
             publish_job(&default_status_job);
         }
 
@@ -585,7 +587,7 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
             PROCESS_WAIT_EVENT_UNTIL(ev == mqtt_event);
             mqtt_service_subscribe(TOPIC_DELETE_JOB, MQTT_QOS_LEVEL_1);
 
-            printf("subscribes done\n\r");
+            PRINTF("subscribes done\n\r");
             is_subscribe = 1;
 
             ctimer_set(
@@ -593,7 +595,7 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
                 conf.mqtt_conf.alert_check_interval,
                 check_for_alerts, NULL);
 
-            printf("send client active message\n\r");
+            PRINTF("send client active message\n\r");
             publish_client_active(0);
 
             // send job information and trigger first time all status jobs
