@@ -62,18 +62,18 @@ static mqtt_publish_status_job_t default_status_job = {
 static void
 show_status_job(mqtt_publish_status_job_t *job)
 {
-    PRINTF("\n\r");
-    PRINTF("## Job #%d -> %p \n\r", job->id, job);
-    // PRINTF("##   type : %d \n\r", job->type);
-    // PRINTF("##   topic : %s \n\r", job->topic);
-    // PRINTF("##   status : %d \n\r", (int)(job->status));
-    // PRINTF("##   time_from : %d \n\r", job->time_from);
-    // PRINTF("##   time_to : %d \n\r", job->time_to);
-    // PRINTF("##   interval : %d \n\r", job->interval);
-    // PRINTF("##\n\r");
-    // PRINTF("##   op : %d \n\r", job->op);
-    // PRINTF("##   value : %d \n\r", job->value);
-    // PRINTF("###################\n\r");
+    printf("\n\r");
+    printf("## Job #%d -> %p \n\r", job->id, job);
+    printf("##   type : %d \n\r", job->type);
+    printf("##   topic : %s \n\r", job->topic);
+    printf("##   status : %d \n\r", (int)(job->status));
+    printf("##   time_from : %d \n\r", job->time_from);
+    printf("##   time_to : %d \n\r", job->time_to);
+    printf("##   interval : %d \n\r", job->interval);
+    printf("##\n\r");
+    printf("##   op : %d \n\r", job->op);
+    printf("##   value : %d \n\r", job->value);
+    printf("###################\n\r");
 }
 
 /* publish a client active message (to have a client list on server side)
@@ -197,6 +197,8 @@ publish_job(mqtt_publish_status_job_t *job)
     pub_item.retain = MQTT_RETAIN_OFF;
     pub_item.is_last_will = 0;
 
+    printf("publish job %d type %d \n\r", job->id, job->type);
+
     mqtt_service_publish(&pub_item);
 }
 
@@ -255,7 +257,7 @@ status_job_callback(void *ptr){
 
     mqtt_publish_status_job_t* job_ptr = (mqtt_publish_status_job_t *) ptr;
 
-    show_status_job(job_ptr);
+    //show_status_job(job_ptr);
 
     if(job_ptr->id < 0 || job_ptr->interval <= 0){
         return;
@@ -361,6 +363,10 @@ parse_job(char *job_as_json, uint16_t length)
         return;
     }
 
+    printf("save job %d type %d\n\r", job_buffer.id, job_buffer.type);
+
+    show_status_job(&(conf.mqtt_conf.jobs[index]));
+
     // send data of job to the broker
     publish_job_details(&(conf.mqtt_conf.jobs[index]));
 
@@ -407,6 +413,8 @@ parse_delete_request(char *request, uint16_t length)
         PRINTF("count == 0 or no job id was parsed\n\r");
         return;
     }
+
+    printf("delete job %d\n\r", job_id);
 
     // delete job
     job_delete(job_id);
@@ -576,6 +584,7 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
 
         // press down button to delete the persistent saved config
         if(ev == sensors_event && data == REBOOT_TRIGGER){
+            printf("delete config and restart\n\r");
             delete_config();
         }
 
