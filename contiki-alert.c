@@ -479,12 +479,18 @@ static void
 check_for_alerts(){
     int i;
 
+    // set the clock of your choice
+    int clock = 0;
+
     // visit all jobs
     for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
         if(conf.mqtt_conf.jobs[i].id == -1 ||
            conf.mqtt_conf.jobs[i].type != JOB_TYPE_ALERT){
             continue;
         }
+
+        if(conf.mqtt_conf.jobs[i].time_from > clock || conf.mqtt_conf.jobs[i].time_to < clock)
+            continue;
 
         PRINTF("alert job index %d\n\r", i);
 
