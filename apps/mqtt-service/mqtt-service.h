@@ -45,19 +45,13 @@
 #define CONFIG_CMD_TYPE_LEN         8
 #define CONFIG_IP_ADDR_STR_LEN      64
 
-#define MAX_STATUS_JOBS             16
+#define MAX_JOBS                    16
 #define MAX_TCP_SEGMENT_SIZE        32
 #define MAX_SUBSCRIBE_REPEAT        10
 #define MAX_PUBLISH_REPEAT          10
 
 #define LED_ERROR                   LEDS_RED
 #define LED_CONNECTING              LEDS_GREEN
-/* Defaults */
-#define DEFAULT_TYPE_ID             "cc2538"
-#define DEFAULT_EVENT_TYPE_ID       "status"
-#define DEFAULT_SUBSCRIBE_CMD_TYPE  "+"
-#define DEFAULT_BROKER_PORT         1883
-#define DEFAULT_KEEP_ALIVE_TIMER    60
 
 #define RETRY_FOREVER               0xFF
 #define RECONNECT_INTERVAL          (CLOCK_SECOND * 2)
@@ -70,159 +64,15 @@
 
 
 
-/* config json keys */
-#define JSON_CONFIG_KEY_MQTT            "mqttConf"
-#define JSON_CONFIG_KEY_USERNAME        "username"
-#define JSON_CONFIG_KEY_PASSWORD        "password"
-#define JSON_CONFIG_KEY_CLIENT_ID       "clientId"
-#define JSON_CONFIG_KEY_TYPE_ID         "typeId"
-#define JSON_CONFIG_KEY_EVENT_TYPE_ID   "eventTypeId"
-#define JSON_CONFIG_KEY_BROKER_IP       "brokerIp"
-#define JSON_CONFIG_KEY_BROKER_PORT     "brokerPort"
-#define JSON_CONFIG_KEY_CMD_TYPE        "cmdType"
-#define JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL  "alertCheckInterval"
-#define JSON_CONFIG_KEY_CURRENT_JOB_ID  "jobId"
+/* Defaults */
+#define DEFAULT_TYPE_ID             "cc2538"
+#define DEFAULT_EVENT_TYPE_ID       "status"
+#define DEFAULT_SUBSCRIBE_CMD_TYPE  "+"
+#define DEFAULT_BROKER_PORT         1883
+#define DEFAULT_KEEP_ALIVE_TIMER    60
 
-#define JSON_CONFIG_JOB_KEY_STATUS_JOB "statusJob"
-#define JSON_CONFIG_JOB_KEY_ALERT_JOB  "alertJob"
-#define JSON_CONFIG_JOB_KEY_TOPIC       "topic"
-#define JSON_CONFIG_JOB_KEY_STATUS      "status"
-#define JSON_CONFIG_JOB_KEY_TYPE        "type"
-#define JSON_CONFIG_JOB_KEY_ID          "id"
-#define JSON_CONFIG_JOB_KEY_INTERVAL    "interval"
-#define JSON_CONFIG_JOB_KEY_OPERATOR    "operator"
-#define JSON_CONFIG_JOB_KEY_DURATION    "duration"
-#define JSON_CONFIG_JOB_KEY_TIME_ELAPSED "timeElapsed"
-#define JSON_CONFIG_JOB_KEY_STATUS_VALUE "value"
-#define JSON_CONFIG_JOB_KEY_TIME_FROM   "timeFrom"
-#define JSON_CONFIG_JOB_KEY_TIME_TO     "timeTo"
 
-#define JSON_KEY_ID                 "id"
-#define JSON_KEY_TOPIC              "topic"
-#define JSON_KEY_STATUS             "status"
-#define JSON_KEY_INTERVAL           "interval"
-#define JSON_KEY_TYPE               "type"
-#define JSON_KEY_TIME_FROM          "timeFrom"
-#define JSON_KEY_TIME_TO            "timeTo"
-#define JSON_KEY_STATUS_VALUE       "value"
-#define JSON_KEY_COMPARE_OPERATOR   "operator"
-#define JSON_KEY_IS_ONLINE          "isOnline"
-#define JSON_KEY_JOB_ID             "jobId"
 
-/* temp in mC,
- * rssi in dBm,
- * uptime in seconds,
- * power in mV */
-#define JSON_STATUS_LIGHT           "\"light\":\"%d\","
-#define JSON_STATUS_TEMPERATURE     "\"temperature\":\"%d\","
-#define JSON_STATUS_UPTIME          "\"uptime\":\"%d\","
-#define JSON_STATUS_POWER           "\"power\":\"%d\","
-#define JSON_STATUS_IPV6            "\"ipv6\":\"%s\","
-#define JSON_STATUS_RSSI            "\"signal\":\"%d\","
-#define JSON_STATUS_CLIENT_ID       "\"id\":\"%s\","
-#define JSON_STATUS_IS_ONLINE       "\"isOnline\":\"%d\","
-#define JSON_STATUS_JOB_ID          "\"jobId\":\"%d\","
-#define JSON_STATUS_SEQUENCE_NUMBER "\"sequence\":\"%d\""
-
-/* config json keys */
-#define JSON_CONFIG_USERNAME        "\"" JSON_CONFIG_KEY_USERNAME "\":\"%s\","
-#define JSON_CONFIG_PASSWORD        "\"" JSON_CONFIG_KEY_PASSWORD "\":\"%s\","
-#define JSON_CONFIG_CLIENT_ID       "\"" JSON_CONFIG_KEY_CLIENT_ID "\":\"%s\","
-#define JSON_CONFIG_TYPE_ID         "\"" JSON_CONFIG_KEY_TYPE_ID "\":\"%s\","
-#define JSON_CONFIG_EVENT_TYPE_ID   "\"" JSON_CONFIG_KEY_EVENT_TYPE_ID "\":\"%s\","
-#define JSON_CONFIG_BROKER_IP       "\"" JSON_CONFIG_KEY_BROKER_IP "\":\"%s\","
-#define JSON_CONFIG_BROKER_PORT     "\"" JSON_CONFIG_KEY_BROKER_PORT "\":%d,"
-#define JSON_CONFIG_CMD_TYPE        "\"" JSON_CONFIG_KEY_CMD_TYPE "\":\"%s\","
-#define JSON_CONFIG_ALERT_CHECK_INTERVAL  "\"" JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL "\":%d,"
-#define JSON_CONFIG_IS_ONLINE       "\"" JSON_KEY_IS_ONLINE "\":%d,"
-
-#define JSON_CONFIG_JOB_TOPIC       "\"" JSON_CONFIG_JOB_KEY_TOPIC "\":\"%s\","
-#define JSON_CONFIG_JOB_TYPE        "\"" JSON_CONFIG_JOB_KEY_TYPE "\":%d,"
-#define JSON_CONFIG_JOB_STATUS      "\"" JSON_CONFIG_JOB_KEY_STATUS "\":%d,"
-#define JSON_CONFIG_JOB_ID          "\"" JSON_CONFIG_JOB_KEY_ID "\":%d,"
-#define JSON_CONFIG_JOB_INTERVAL    "\"" JSON_CONFIG_JOB_KEY_INTERVAL "\":%d,"
-#define JSON_CONFIG_JOB_OPERATOR    "\"" JSON_CONFIG_JOB_KEY_OPERATOR "\":%d,"
-#define JSON_CONFIG_JOB_TIME_ELAPSED "\"" JSON_CONFIG_JOB_KEY_TIME_ELAPSED "\":%d,"
-#define JSON_CONFIG_JOB_STATUS_VALUE "\"" JSON_CONFIG_JOB_KEY_STATUS_VALUE "\":%d,"
-#define JSON_CONFIG_JOB_TIME_FROM   "\"" JSON_CONFIG_JOB_KEY_TIME_FROM "\":%d,"
-#define JSON_CONFIG_JOB_TIME_TO     "\"" JSON_CONFIG_JOB_KEY_TIME_TO "\":%d"
-
-#define JSON_CONFIG_JOBS "\"job\":"
-
-#define JSON_JOB "{" \
-    JSON_CONFIG_JOB_TYPE \
-    JSON_CONFIG_JOB_TOPIC \
-    JSON_CONFIG_JOB_STATUS \
-    JSON_CONFIG_JOB_ID \
-    JSON_CONFIG_JOB_OPERATOR \
-    JSON_CONFIG_JOB_INTERVAL \
-    JSON_CONFIG_JOB_STATUS_VALUE \
-    JSON_CONFIG_JOB_TIME_FROM \
-    JSON_CONFIG_JOB_TIME_TO \
-"},"
-
-#define JSON_CLIENT_ACTIVE "{" \
-    JSON_CONFIG_IS_ONLINE \
-    JSON_CONFIG_CLIENT_ID \
-    JSON_STATUS_IPV6 \
-    JSON_STATUS_RSSI \
-    JSON_STATUS_SEQUENCE_NUMBER \
-"}"
-
-#define JSON_HAS_NEXT(json)         ((json).pos < (json).len)
-#define JSON_IS_ERROR(json)         ((json).vtype == JSON_TYPE_ERROR)
-#define JSON_IS_KEY(json)           ((json).vtype == JSON_TYPE_PAIR_NAME)
-#define JSON_IS_VALUE(json)         ( \
-                                        (json).vtype == JSON_TYPE_STRING || \
-                                        (json).vtype == JSON_TYPE_PAIR || \
-                                        (json).vtype == JSON_TYPE_UINT || \
-                                        (json).vtype == JSON_TYPE_INT || \
-                                        (json).vtype == JSON_TYPE_NUMBER \
-                                    )
-#define JSON_BACK_IF_NOT_VALUE(json, count) { \
-    jsonparse_next(&(json)); \
-    if(!(JSON_IS_VALUE((json)))){ \
-        if(JSON_IS_ERROR((json))){ \
-            PRINTF("BINV error\n\r"); \
-        } \
-        PRINTF("BINV continue\n\r"); \
-        continue; \
-    } \
-    (count)++; \
-}
-
-#define GET_UPTIME (clock_seconds())
-
-/* possible op values in a alert job */
-typedef enum {
-    COMPARE_OPERATOR_LOWER = 0x1,
-    COMPARE_OPERATOR_GREATER = 0x2,
-    COMPARE_OPERATOR_EQUAL= 0x4,
-    COMPARE_OPERATOR_LOWER_EQUAL =
-        COMPARE_OPERATOR_LOWER |
-        COMPARE_OPERATOR_EQUAL,
-    COMPARE_OPERATOR_GREATE_EQUAL =
-        COMPARE_OPERATOR_GREATER |
-        COMPARE_OPERATOR_EQUAL,
-} compare_operator_t;
-
-/* specify flags for different values of sensor node */
-typedef enum {
-    DEVICE_STATUS_LIGHT         = 1 << 0,
-    DEVICE_STATUS_TEMPERATURE   = 1 << 1,
-    DEVICE_STATUS_UPTIME        = 1 << 2,
-    DEVICE_STATUS_POWER         = 1 << 3,
-    DEVICE_STATUS_IPV6          = 1 << 4,
-    DEVICE_STATUS_RSSI          = 1 << 5,
-    DEVICE_STATUS_CLIENT_ID     = 1 << 6,
-    DEVICE_STATUS_ALL           =   DEVICE_STATUS_LIGHT |
-                                    DEVICE_STATUS_TEMPERATURE |
-                                    DEVICE_STATUS_UPTIME |
-                                    DEVICE_STATUS_POWER |
-                                    DEVICE_STATUS_IPV6 |
-                                    DEVICE_STATUS_RSSI |
-                                    DEVICE_STATUS_CLIENT_ID,
-} device_status_t;
 
 /* possible states for mqtt state machine */
 typedef enum {
@@ -236,14 +86,6 @@ typedef enum {
     MQTT_SERVICE_STATE_CONFIG_ERROR,
     MQTT_SERVICE_STATE_ERROR,
 } mqtt_state_t;
-
-/* status jobs are periodic send the device status
- * alert jobs send alert message if a sensor value is pass a border value
- * for specific time */
-typedef enum {
-    JOB_TYPE_STATUS     = 1 << 0,
-    JOB_TYPE_ALERT      = 1 << 1,
-} job_type_t;
 
 
 /* item that conatins full subscription informations */
@@ -270,74 +112,12 @@ typedef struct mqtt_subscribe_job {
     struct ctimer sub_timer;
 } mqtt_subscribe_job_t;
 
-/* base publish job */
-typedef struct mqtt_publish_job {
-    char *topic;
-    uint8_t topic_len;
-    char *data;
-    uint16_t data_len;
-    struct ctimer timer;
-} mqtt_publish_job_t;
-
-/* specific job type to send a status or alert message
- * @param topic : MQTT Topic string to address a publish job
- * @param status : wich kind of sensor value you will send or observe
- * @param type : type=1 - status job send periodically sensor node values
- *               type=2 - alert job observe a sensor value and publish a alert
- *                        if this value are to long greater or lower as the
- *                        value in this struct
- * @param op : only type=2, define the compare operation in alert jobs
- *             if you will observe light and send a alert then
- *             light value greater 10000, the op value is 2 and mean "greater"
- * @param id : unique identifier for this job in job queue. -1 => autoincrement
- * @param interval : time between to status jobs or time to observe a value
- *                   before send a alert message
- * @param time_from : clock time from when this job is active
- * @param time_to : clock time from when this job is inactive
- * @param time_elapsed : only type = 2, this value describes how long a value
- *                       has already been observe without the alarm being struck
- * @param value : only type = 2, border value of a alarm job
- * @param timer : only type = 1, interval timer
- *
- * @example status job for all values every 30 seconds :
- *  {
- *      .id = -1,
- *      .topic = "status/default",
- *      .status = DEVICE_STATUS_ALL,
- *      .interval = 30000,
- *      .type = JOB_TYPE_STATUS
- *  };
- *
- * @example alert job - when light is greater then 10000 for 10 minutes :
- *  {
- *      .id = -1,
- *      .topic = "alert/light",
- *      .status = DEVICE_STATUS_LIGHT,
- *      .interval = 10*60,
- *      .type = JOB_TYPE_ALERT,
- *      .op = COMPARE_OPERATOR_GREATER,
- *      .value = 10000
- *  };
- */
-typedef struct mqtt_publish_status_job {
-    char topic[MQTT_META_BUFFER_SIZE];
-    device_status_t status;
-    job_type_t type;
-    compare_operator_t op;
-    int id;
-    int interval;
-    int time_from;
-    int time_to;
-    int time_elapsed;
-    int value;
-    struct ctimer timer;
-} mqtt_publish_status_job_t;
 
 typedef struct mqtt_service_state {
     mqtt_state_t state;
     int sequenz_number;
     int connect_attempt;
-    int subscribe_tries;
+    int subscribe_attempt;
     struct timer connection_life;
     struct ctimer led_timer;
     struct ctimer publish_timer;
@@ -357,9 +137,6 @@ typedef struct mqtt_client_config {
     char broker_ip[CONFIG_IP_ADDR_STR_LEN];
     char cmd_type[CONFIG_CMD_TYPE_LEN];
     uint16_t broker_port;
-    int alert_check_interval;
-    int job_id;
-    mqtt_publish_status_job_t jobs[MAX_STATUS_JOBS];
 } mqtt_client_config_t;
 
 extern process_event_t mqtt_event;

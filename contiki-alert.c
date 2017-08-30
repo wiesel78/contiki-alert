@@ -3,6 +3,7 @@
 #include "cfs/cfs.h"
 #include "jsonparse.h"
 #include "jsontree.h"
+#include "json-helper.h"
 #include "sys/etimer.h"
 #include "sys/ctimer.h"
 
@@ -44,12 +45,13 @@ client_state_t state;
 
 static int is_subscribe = 0;
 static char ipv6_addr_str[MQTT_META_BUFFER_SIZE];
-static char receive_buffer[MQTT_DATA_BUFFER_SIZE];
 static char *buffer_ptr;
 static mqtt_publish_status_job_t job_buffer;
-static publish_item_t pub_item;
 static device_status_t alert_status_buffer;
 static int alert_extend_duration;
+
+static publish_item_t pub_item;
+static char receive_buffer[MQTT_DATA_BUFFER_SIZE];
 
 static mqtt_publish_status_job_t default_status_job = {
     .id = 0,
@@ -365,14 +367,14 @@ parse_job(char *job_as_json, uint16_t length)
 
     printf("save job %d type %d\n\r", job_buffer.id, job_buffer.type);
 
-    show_status_job(&(conf.mqtt_conf.jobs[index]));
+    show_status_job(&(conf.job_conf.jobs[index]));
 
     // send data of job to the broker
-    publish_job_details(&(conf.mqtt_conf.jobs[index]));
+    publish_job_details(&(conf.job_conf.jobs[index]));
 
     // if status job, begin the periodic event
-    if(conf.mqtt_conf.jobs[index].type == JOB_TYPE_STATUS)
-        status_job_callback(&(conf.mqtt_conf.jobs[index]));
+    if(conf.job_conf.jobs[index].type == JOB_TYPE_STATUS)
+        status_job_callback(&(conf.job_conf.jobs[index]));
 }
 
 /* parsing json to alert job and add them to status-job-list */
@@ -483,43 +485,43 @@ check_for_alerts(){
     int clock = 0;
 
     // visit all jobs
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(conf.mqtt_conf.jobs[i].id == -1 ||
-           conf.mqtt_conf.jobs[i].type != JOB_TYPE_ALERT){
+    for(i = 0 ; i < MAX_JOBS ; i++){
+        if(conf.job_conf.jobs[i].id == -1 ||
+           conf.job_conf.jobs[i].type != JOB_TYPE_ALERT){
             continue;
         }
 
-        if(conf.mqtt_conf.jobs[i].time_from > clock || conf.mqtt_conf.jobs[i].time_to < clock)
+        if(conf.job_conf.jobs[i].time_from > clock || conf.job_conf.jobs[i].time_to < clock)
             continue;
 
         PRINTF("alert job index %d\n\r", i);
 
         alert_extend_duration = 0;
-        alert_status_buffer = conf.mqtt_conf.jobs[i].status;
+        alert_status_buffer = conf.job_conf.jobs[i].status;
 
         switch(alert_status_buffer){
             case DEVICE_STATUS_LIGHT:
-                if(check_alert_value(GET_VALUE_LIGHT, &(conf.mqtt_conf.jobs[i]))){
+                if(check_alert_value(GET_VALUE_LIGHT, &(conf.job_conf.jobs[i]))){
                     alert_extend_duration = 1;
                 }
                 break;
             case DEVICE_STATUS_TEMPERATURE:
-                if(check_alert_value(GET_VALUE_TEMPERATURE, &(conf.mqtt_conf.jobs[i]))){
+                if(check_alert_value(GET_VALUE_TEMPERATURE, &(conf.job_conf.jobs[i]))){
                     alert_extend_duration = 1;
                 }
                 break;
             case DEVICE_STATUS_POWER:
-                if(check_alert_value(GET_POWER, &(conf.mqtt_conf.jobs[i]))){
+                if(check_alert_value(GET_POWER, &(conf.job_conf.jobs[i]))){
                     alert_extend_duration = 1;
                 }
                 break;
             case DEVICE_STATUS_UPTIME:
-                if(check_alert_value(GET_UPTIME, &(conf.mqtt_conf.jobs[i]))){
+                if(check_alert_value(GET_UPTIME, &(conf.job_conf.jobs[i]))){
                     alert_extend_duration = 1;
                 }
                 break;
             case DEVICE_STATUS_RSSI:
-                if(check_alert_value(state.ping_state.rssi, &(conf.mqtt_conf.jobs[i]))){
+                if(check_alert_value(state.ping_state.rssi, &(conf.job_conf.jobs[i]))){
                     alert_extend_duration = 1;
                 }
                 break;
@@ -528,22 +530,22 @@ check_for_alerts(){
         }
 
         if(alert_extend_duration == 1){
-            conf.mqtt_conf.jobs[i].time_elapsed += conf.mqtt_conf.alert_check_interval;
+            conf.job_conf.jobs[i].time_elapsed += conf.job_conf.alert_check_interval;
         }else{
-            conf.mqtt_conf.jobs[i].time_elapsed = 0;
+            conf.job_conf.jobs[i].time_elapsed = 0;
         }
 
-        if(conf.mqtt_conf.jobs[i].time_elapsed >= (conf.mqtt_conf.jobs[i].interval * CLOCK_SECOND)){
-            PRINTF("alarm %d\n\r", conf.mqtt_conf.jobs[i].id);
-            publish_job(&(conf.mqtt_conf.jobs[i]));
-            conf.mqtt_conf.jobs[i].time_elapsed = 0;
+        if(conf.job_conf.jobs[i].time_elapsed >= (conf.job_conf.jobs[i].interval * CLOCK_SECOND)){
+            PRINTF("alarm %d\n\r", conf.job_conf.jobs[i].id);
+            publish_job(&(conf.job_conf.jobs[i]));
+            conf.job_conf.jobs[i].time_elapsed = 0;
         }
     }
 
     if(ctimer_expired(&(state.mqtt_state.alert_timer))){
         ctimer_set(
             &state.mqtt_state.alert_timer,
-            conf.mqtt_conf.alert_check_interval,
+            conf.job_conf.alert_check_interval,
             check_for_alerts, NULL);
     }
 }
@@ -607,21 +609,21 @@ PROCESS_THREAD(contiki_alert_process, ev, data)
 
             ctimer_set(
                 &(state.mqtt_state.alert_timer),
-                conf.mqtt_conf.alert_check_interval,
+                conf.job_conf.alert_check_interval,
                 check_for_alerts, NULL);
 
             PRINTF("send client active message\n\r");
             publish_client_active(0);
 
             // send job information and trigger first time all status jobs
-            for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
-                if(conf.mqtt_conf.jobs[i].id < 0)
+            for(i = 0 ; i < MAX_JOBS ; i++){
+                if(conf.job_conf.jobs[i].id < 0)
                     continue;
 
-                if(conf.mqtt_conf.jobs[i].type == JOB_TYPE_STATUS)
-                    status_job_callback(&(conf.mqtt_conf.jobs[i]));
+                if(conf.job_conf.jobs[i].type == JOB_TYPE_STATUS)
+                    status_job_callback(&(conf.job_conf.jobs[i]));
 
-                publish_job_details(&(conf.mqtt_conf.jobs[i]));
+                publish_job_details(&(conf.job_conf.jobs[i]));
             }
         }
 	}

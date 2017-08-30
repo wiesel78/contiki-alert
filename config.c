@@ -4,6 +4,7 @@
 #include "rpl/rpl-private.h"
 #include "jsonparse.h"
 #include "jsontree.h"
+#include "json-helper.h"
 #include "ping-service.h"
 #include "./config.h"
 #include "./io-utils.h"
@@ -24,8 +25,8 @@ int job_exists(mqtt_publish_status_job_t *job)
 {
     int i;
 
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.jobs[i].id == job->id && job->id != -1){
+    for(i = 0 ; i < MAX_JOBS ; i++){
+        if(app_conf->job_conf.jobs[i].id == job->id && job->id != -1){
             return i;
         }
     }
@@ -38,9 +39,9 @@ int job_list_get_free_slot(void)
 {
     int i;
 
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++)
+    for(i = 0 ; i < MAX_JOBS ; i++)
     {
-        if(app_conf->mqtt_conf.jobs[i].id == -1){
+        if(app_conf->job_conf.jobs[i].id == -1){
             return i;
         }
     }
@@ -55,16 +56,16 @@ int job_list_save(mqtt_publish_status_job_t *job)
     index = index <= -1 ? job_list_get_free_slot() : index;
 
     if(index >= 0){
-        if(!ctimer_expired(&(app_conf->mqtt_conf.jobs[index].timer))){
-            ctimer_stop(&(app_conf->mqtt_conf.jobs[index].timer));
+        if(!ctimer_expired(&(app_conf->job_conf.jobs[index].timer))){
+            ctimer_stop(&(app_conf->job_conf.jobs[index].timer));
         }
 
-        memcpy( &(app_conf->mqtt_conf.jobs[index]),
+        memcpy( &(app_conf->job_conf.jobs[index]),
                 job,
                 sizeof(mqtt_publish_status_job_t));
 
-        if(app_conf->mqtt_conf.jobs[index].id < 0)
-            app_conf->mqtt_conf.jobs[index].id = ++(app_conf->mqtt_conf.job_id);
+        if(app_conf->job_conf.jobs[index].id < 0)
+            app_conf->job_conf.jobs[index].id = ++(app_conf->job_conf.job_id);
     }
 
     PRINTF("index in list_save %d\n\r", index);
@@ -80,9 +81,9 @@ void job_delete(int id)
     int i;
     mqtt_publish_status_job_t *job = NULL;
 
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.jobs[i].id == id && job->id != -1){
-            job = &(app_conf->mqtt_conf.jobs[i]);
+    for(i = 0 ; i < MAX_JOBS ; i++){
+        if(app_conf->job_conf.jobs[i].id == id && job->id != -1){
+            job = &(app_conf->job_conf.jobs[i]);
 
             if(!ctimer_expired(&(job->timer))){
                 ctimer_stop(&(job->timer));
@@ -112,10 +113,10 @@ void job_list_init(void)
 {
     int i;
 
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++)
+    for(i = 0 ; i < MAX_JOBS ; i++)
     {
-        app_conf->mqtt_conf.jobs[i].id = -1;
-        app_conf->mqtt_conf.jobs[i].time_elapsed = 0;
+        app_conf->job_conf.jobs[i].id = -1;
+        app_conf->job_conf.jobs[i].time_elapsed = 0;
     }
 }
 
@@ -138,8 +139,8 @@ init_config(client_config_t *config, client_state_t *state)
     memcpy(app_conf->mqtt_conf.cmd_type, DEFAULT_SUBSCRIBE_CMD_TYPE, 1);
 
     app_conf->mqtt_conf.broker_port = DEFAULT_BROKER_PORT;
-    app_conf->mqtt_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
-    app_conf->mqtt_conf.job_id = 1;
+    app_conf->job_conf.alert_check_interval = ALERT_CHECK_INTERVAL;
+    app_conf->job_conf.job_id = 1;
     app_conf->ping_conf.interval = DEFAULT_PING_INTERVAL;
 
     read_config();
@@ -236,14 +237,14 @@ save_config()
     ini_write_string(&config_state, JSON_CONFIG_KEY_BROKER_IP, app_conf->mqtt_conf.broker_ip);
     ini_write_int(&config_state, JSON_CONFIG_KEY_BROKER_PORT, app_conf->mqtt_conf.broker_port);
     ini_write_string(&config_state, JSON_CONFIG_KEY_CMD_TYPE, app_conf->mqtt_conf.cmd_type);
-    ini_write_int(&config_state, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL, app_conf->mqtt_conf.alert_check_interval);
-    ini_write_int(&config_state, JSON_CONFIG_KEY_CURRENT_JOB_ID, app_conf->mqtt_conf.job_id);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL, app_conf->job_conf.alert_check_interval);
+    ini_write_int(&config_state, JSON_CONFIG_KEY_CURRENT_JOB_ID, app_conf->job_conf.job_id);
 
-    for(i = 0 ; i < MAX_STATUS_JOBS ; i++){
-        if(app_conf->mqtt_conf.jobs[i].id == -1)
+    for(i = 0 ; i < MAX_JOBS ; i++){
+        if(app_conf->job_conf.jobs[i].id == -1)
             continue;
 
-        job = &(app_conf->mqtt_conf.jobs[i]);
+        job = &(app_conf->job_conf.jobs[i]);
 
         // write job group
         ini_write_group(&config_state, JSON_CONFIG_JOB_KEY_STATUS_JOB);
@@ -313,10 +314,10 @@ read_config(){
                 snprintf(app_conf->mqtt_conf.cmd_type, INI_DATA_SIZE, config_state.data);
 
             }else if(strcmp(config_state.key, JSON_CONFIG_KEY_ALERT_CHECK_INTERVAL) == 0){
-                app_conf->mqtt_conf.alert_check_interval = atoi(config_state.data);
+                app_conf->job_conf.alert_check_interval = atoi(config_state.data);
 
             }else if(strcmp(config_state.key, JSON_CONFIG_KEY_CURRENT_JOB_ID) == 0){
-                app_conf->mqtt_conf.job_id = atoi(config_state.data);
+                app_conf->job_conf.job_id = atoi(config_state.data);
             }
 
 

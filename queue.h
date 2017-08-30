@@ -33,7 +33,7 @@ typedef struct data_queue {
 extern void
 data_queue_init(data_queue_t *queue, struct memb *queue_memb, struct memb *data_memb);
 
-/* add a queue item to the queue
+/* add a queue-item to the queue
  * @param queue : Pointer to queue
  * @param data : Pointer to data to add to queue
  * @return Pointer of last item of this queue */
